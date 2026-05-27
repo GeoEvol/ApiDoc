@@ -1,0 +1,40 @@
+plugins {
+    id 'groovy'
+    id 'java-gradle-plugin'
+}
+
+group = 'com.byd.apidoc'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+
+    implementation gradleApi()
+
+    implementation localGroovy()
+
+    implementation 'org.freemarker:freemarker:2.3.34'
+
+    implementation 'com.vladsch.flexmark:flexmark-all:0.64.8'
+
+    testImplementation 'junit:junit:4.13.2'
+
+}
+
+gradlePlugin {
+
+    plugins {
+
+        apiDocPlugin {
+
+            id = 'com.byd.apidoc'
+
+            implementationClass =
+                    'com.byd.apidoc.plugin.ApiDocGeneratorPlugin'
+        }
+    }
+}

@@ -1,0 +1,26 @@
+.markdown-body,
+.doc-comment {
+    overflow-wrap: anywhere;
+}
+
+.doc-comment.markdown-body {
+    color: inherit;
+    background: transparent;
+}
+
+.doc-comment.markdown-body pre {
+    margin: 14px 0;
+}
+
+.doc-comment.markdown-body :first-child {
+    margin-top: 0;
+}
+
+.doc-comment.markdown-body :last-child {
+    margin-bottom: 0;
+}
+
+.markdown-body img,
+.doc-comment img {
+    max-width: 100%;
+}

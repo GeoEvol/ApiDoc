@@ -1,0 +1,168 @@
+# ApiDoc Portable Usage
+
+This archive is a portable source package for ApiDoc. Current outputs include the v1/v2 JSON contract, offline Markdown API reference, and offline static HTML API reference.
+
+## Requirements
+
+- JDK 17 or newer
+- Network access on first Gradle run, unless Gradle 8.13 and Maven dependencies
+  are already cached on the target machine
+
+The package includes `gradlew`, `gradlew.bat`, and the Gradle wrapper jar. It
+does not include local build caches, IDE state, or machine-specific
+`local.properties`.
+
+## Verify After Extracting
+
+From the extracted project root:
+
+```bat
+gradlew.bat :core:test --rerun-tasks
+```
+
+On Unix-like systems:
+
+```sh
+./gradlew :core:test --rerun-tasks
+```
+
+Expected result:
+
+```text
+BUILD SUCCESSFUL
+```
+
+## Generate Documentation
+
+Apply the plugin in a Gradle project and run either public task:
+
+```bat
+gradlew.bat generateMarkdown
+gradlew.bat generateHtml
+```
+
+Both tasks produce the output contract:
+
+```text
+doc-corpus.json
+page-index.json
+nav-index.json
+search-index.json
+output-manifest.json
+api-docs-md/
+api-docs-html/
+```
+
+The v1 contract is documented in `docs/v1-output-contract.md`.
+The v2 contract is documented in `docs/v2-output-contract.md`.
+
+## v2 HTML Output
+
+The built-in v2 HTML renderer writes:
+
+```text
+api-docs-html/
+├── index.html
+├── packages.html
+├── classes.html
+├── package/
+├── reference/
+├── assets/
+├── nav-index.json
+└── search-index.json
+```
+
+It is a static multi-page API reference inspired by Android Developers / Google Developers API Reference structure.
+
+## v2 Markdown Output
+
+The built-in Markdown renderer writes:
+
+```text
+api-docs-md/
+├── index.md
+├── packages.md
+├── classes.md
+├── package/
+└── reference/
+```
+
+Markdown links are relative so the directory can be copied with the rest of the output.
+
+## Viewing Offline HTML
+
+Recommended local viewing:
+
+```bat
+cd <output-dir>\api-docs-html
+python -m http.server 8080
+```
+
+Then open:
+
+```text
+http://localhost:8080/
+```
+
+This avoids browser restrictions around `file://` and JSON fetches.
+
+## Copying to Another Computer
+
+Copy the complete output directory:
+
+```text
+doc-corpus.json
+page-index.json
+nav-index.json
+search-index.json
+output-manifest.json
+api-docs-html/
+api-docs-md/
+```
+
+On the target computer, serve `api-docs-html/` with any static file server.
+
+## Configure Source Parsing Dependencies
+
+For Android SDKs or projects that reference external jars, put every type needed
+by javadoc parsing into `dependencyClasspath`:
+
+```groovy
+apiDoc {
+    projectName = 'DiLinkSDK'
+    sourcePaths = ['api/src/main/java', 'core/src/main/java']
+    outputDir = ['doc/markdown', 'doc/html']
+
+    dependencyClasspath.from(
+        'D:/Android_SDK/platforms/android-35/android.jar',
+        'api/libs/dilink-frameworkb.jar',
+        'api/libs/frameworkb.jar'
+    )
+
+    // Optional. When unset, ApiDoc uses the current runtime JDK major version.
+    sourceVersion = '17'
+}
+```
+
+`sourceVersion` is optional. ApiDoc can detect the current runtime JDK major
+version, and local builds may clamp configured source level to the runtime where
+that behavior has been enabled by the plugin configuration.
+
+## Troubleshooting
+
+If Java or Android types cannot be resolved, add the missing jars to
+`dependencyClasspath`.
+
+If HTML search does not work from `file://`, serve the output through a local
+static server:
+
+```bat
+cd <output-dir>\api-docs-html
+python -m http.server 8080
+```
+
+If the generated HTML looks stale, rerun the relevant task with:
+
+```bat
+gradlew.bat generateHtml --rerun-tasks
+```
