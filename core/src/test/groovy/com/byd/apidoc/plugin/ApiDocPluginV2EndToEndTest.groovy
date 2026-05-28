@@ -26,7 +26,7 @@ class ApiDocPluginV2EndToEndTest {
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":generateMarkdown").outcome)
 
-        assertV2AcceptanceOutputs(new File(projectDir, "build/apidoc-out"))
+        assertMarkdownOnlyV2AcceptanceOutputs(new File(projectDir, "build/apidoc-out"))
     }
 
     @Test
@@ -43,27 +43,15 @@ class ApiDocPluginV2EndToEndTest {
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":generateHtml").outcome)
 
-        assertV2AcceptanceOutputs(new File(projectDir, "build/apidoc-html-out"))
+        assertHtmlOnlyV2AcceptanceOutputs(new File(projectDir, "build/apidoc-html-out"))
     }
 
-    private static void assertV2AcceptanceOutputs(File outputDir) {
+    private static void assertCommonV2AcceptanceOutputs(File outputDir) {
         assertTrue(new File(outputDir, "doc-corpus.json").exists())
         assertTrue(new File(outputDir, "page-index.json").exists())
         assertTrue(new File(outputDir, "nav-index.json").exists())
         assertTrue(new File(outputDir, "search-index.json").exists())
         assertTrue(new File(outputDir, "output-manifest.json").exists())
-
-        File htmlRoot = new File(outputDir, "api-docs-html")
-        File markdownRoot = new File(outputDir, "api-docs-md")
-        assertTrue(new File(htmlRoot, "index.html").exists())
-        assertTrue(new File(htmlRoot, "reference/com.example.sdk.Foo.html").exists())
-        assertTrue(new File(htmlRoot, "reference/com.example.sdk.inheritance.DerivedService.html").exists())
-        assertTrue(new File(htmlRoot, "assets/apidoc-devsite.css").exists())
-        assertTrue(new File(htmlRoot, "assets/apidoc-devsite.js").exists())
-        assertTrue(new File(htmlRoot, "assets/search.js").exists())
-        assertTrue(new File(htmlRoot, "search-index.json").exists())
-        assertTrue(new File(markdownRoot, "reference/com.example.sdk.Foo.md").exists())
-        assertTrue(new File(markdownRoot, "reference/com.example.sdk.inheritance.DerivedService.md").exists())
 
         def manifest = new JsonSlurper().parse(new File(outputDir, "output-manifest.json"))
         assertEquals("1.0", manifest.schemaVersion)
@@ -72,14 +60,11 @@ class ApiDocPluginV2EndToEndTest {
         assertEquals("nav-index.json", manifest.outputs.nav)
         assertEquals("search-index.json", manifest.outputs.search)
         assertEquals("output-manifest.json", manifest.outputs.manifest)
-        assertEquals("api-docs-html/", manifest.outputs.html)
-        assertEquals("api-docs-md/", manifest.outputs.markdown)
         assertTrue(manifest.generatedAt != null && !manifest.generatedAt.toString().isEmpty())
 
         def corpus = new JsonSlurper().parse(new File(outputDir, "doc-corpus.json"))
         def pages = new JsonSlurper().parse(new File(outputDir, "page-index.json"))
         def rootSearch = new JsonSlurper().parse(new File(outputDir, "search-index.json"))
-        def htmlSearch = new JsonSlurper().parse(new File(htmlRoot, "search-index.json"))
 
         assertTrue(corpus.types.any { it.qualifiedName == "com.example.sdk.HiddenApi" })
         assertTrue(corpus.types.any { it.qualifiedName == "com.example.sdk.RemovedApi" })
@@ -87,6 +72,61 @@ class ApiDocPluginV2EndToEndTest {
         assertFalse(pages.any { it.targetId?.qualifiedName == "com.example.sdk.RemovedApi" })
         assertFalse(rootSearch.any { it.qualifiedName == "com.example.sdk.HiddenApi" })
         assertFalse(rootSearch.any { it.qualifiedName == "com.example.sdk.RemovedApi" })
+    }
+
+    private static void assertMarkdownOnlyV2AcceptanceOutputs(File outputDir) {
+        assertCommonV2AcceptanceOutputs(outputDir)
+
+        File htmlRoot = new File(outputDir, "api-docs-html")
+        File markdownRoot = new File(outputDir, "api-docs-md")
+        assertFalse("generateMarkdown must not write HTML output", htmlRoot.exists())
+        assertTrue(new File(markdownRoot, "reference/com.example.sdk.Foo.md").exists())
+        assertTrue(new File(markdownRoot, "reference/com.example.sdk.inheritance.DerivedService.md").exists())
+
+        def manifest = new JsonSlurper().parse(new File(outputDir, "output-manifest.json"))
+        assertEquals("api-docs-md/", manifest.outputs.markdown)
+        assertFalse(manifest.outputs.containsKey("html"))
+
+        String inheritedMarkdown = new File(markdownRoot, "reference/com.example.sdk.inheritance.DerivedService.md").text
+        assertTrue(inheritedMarkdown.contains("## Inherited Members"))
+        assertTrue(inheritedMarkdown.contains("### Inherited from BaseService"))
+        assertTrue(inheritedMarkdown.contains("[start()](com.example.sdk.inheritance.BaseService.md#start()) - Starts the base service."))
+
+        String fooMarkdown = new File(markdownRoot, "reference/com.example.sdk.Foo.md").text
+        assertTrue(fooMarkdown.contains("## API Status"))
+        assertTrue(fooMarkdown.contains("- Since 1.0"))
+        assertTrue(fooMarkdown.contains("- API 3"))
+        assertTrue(fooMarkdown.contains("**@permission:** android.permission.INTERNET"))
+        assertTrue(fooMarkdown.contains("sample.permission.RUN"))
+
+        String deprecatedMarkdown = new File(markdownRoot, "reference/com.example.sdk.DeprecatedApi.md").text
+        assertTrue(deprecatedMarkdown.contains("## API Status"))
+        assertTrue(deprecatedMarkdown.contains("- Deprecated: use {@link Foo} instead"))
+        assertTrue(deprecatedMarkdown.contains("- Deprecated since 2.0"))
+        assertTrue(deprecatedMarkdown.contains("**Deprecated.** use [Foo](com.example.sdk.Foo.md#com.example.sdk.Foo) instead"))
+        assertFalse(new File(markdownRoot, "reference/com.example.sdk.AndroidMetadataApi.md").exists())
+    }
+
+    private static void assertHtmlOnlyV2AcceptanceOutputs(File outputDir) {
+        assertCommonV2AcceptanceOutputs(outputDir)
+
+        File htmlRoot = new File(outputDir, "api-docs-html")
+        File markdownRoot = new File(outputDir, "api-docs-md")
+        assertFalse("generateHtml must not write Markdown output", markdownRoot.exists())
+        assertTrue(new File(htmlRoot, "index.html").exists())
+        assertTrue(new File(htmlRoot, "reference/com.example.sdk.Foo.html").exists())
+        assertTrue(new File(htmlRoot, "reference/com.example.sdk.inheritance.DerivedService.html").exists())
+        assertTrue(new File(htmlRoot, "assets/apidoc-devsite.css").exists())
+        assertTrue(new File(htmlRoot, "assets/apidoc-devsite.js").exists())
+        assertTrue(new File(htmlRoot, "assets/search.js").exists())
+        assertTrue(new File(htmlRoot, "search-index.json").exists())
+
+        def manifest = new JsonSlurper().parse(new File(outputDir, "output-manifest.json"))
+        assertEquals("api-docs-html/", manifest.outputs.html)
+        assertFalse(manifest.outputs.containsKey("markdown"))
+
+        def rootSearch = new JsonSlurper().parse(new File(outputDir, "search-index.json"))
+        def htmlSearch = new JsonSlurper().parse(new File(htmlRoot, "search-index.json"))
         assertEquals(rootSearch*.url, htmlSearch*.url)
 
         String indexHtml = new File(htmlRoot, "index.html").text
@@ -114,25 +154,6 @@ class ApiDocPluginV2EndToEndTest {
         assertTrue(inheritedHtml.contains("start()"))
 
         assertSearchLinksResolveFromRootAndNestedPages(htmlRoot, rootSearch)
-
-        String inheritedMarkdown = new File(markdownRoot, "reference/com.example.sdk.inheritance.DerivedService.md").text
-        assertTrue(inheritedMarkdown.contains("## Inherited Members"))
-        assertTrue(inheritedMarkdown.contains("### Inherited from BaseService"))
-        assertTrue(inheritedMarkdown.contains("[start()](com.example.sdk.inheritance.BaseService.md#start()) - Starts the base service."))
-
-        String fooMarkdown = new File(markdownRoot, "reference/com.example.sdk.Foo.md").text
-        assertTrue(fooMarkdown.contains("## API Status"))
-        assertTrue(fooMarkdown.contains("- Since 1.0"))
-        assertTrue(fooMarkdown.contains("- API 3"))
-        assertTrue(fooMarkdown.contains("**@permission:** android.permission.INTERNET"))
-        assertTrue(fooMarkdown.contains("sample.permission.RUN"))
-
-        String deprecatedMarkdown = new File(markdownRoot, "reference/com.example.sdk.DeprecatedApi.md").text
-        assertTrue(deprecatedMarkdown.contains("## API Status"))
-        assertTrue(deprecatedMarkdown.contains("- Deprecated: use {@link Foo} instead"))
-        assertTrue(deprecatedMarkdown.contains("- Deprecated since 2.0"))
-        assertTrue(deprecatedMarkdown.contains("**Deprecated.** use [Foo](com.example.sdk.Foo.md#com.example.sdk.Foo) instead"))
-        assertFalse(new File(markdownRoot, "reference/com.example.sdk.AndroidMetadataApi.md").exists())
     }
 
     private static void assertSearchLinksResolveFromRootAndNestedPages(File htmlRoot, List search) {

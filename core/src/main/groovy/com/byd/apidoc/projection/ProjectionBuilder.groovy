@@ -228,6 +228,12 @@ class ProjectionBuilder {
                     name: member.name,
                     displayName: member.id?.displayId ?: member.name,
                     declaration: memberDeclaration(member),
+                    kind: member.kind,
+                    modifiers: new LinkedHashSet<String>(member.modifiers ?: []),
+                    type: member.type,
+                    returnType: member.returnType,
+                    parameters: member.parameters ?: [],
+                    throwsTypes: member.throwsTypes ?: [],
                     summary: summary(member.comment),
                     comment: member.comment,
                     metadata: member.metadata,
@@ -329,6 +335,8 @@ class ProjectionBuilder {
                                     name: member.name,
                                     displayName: member.id?.displayId ?: member.name,
                                     url: type == null ? null : "${typeUrl(type)}#${member.id?.effectiveAnchorId() ?: member.name}",
+                                    modifierAndType: memberModifierAndType(member),
+                                    kind: searchKind(member).name().toLowerCase(Locale.ROOT),
                                     summary: summary(member.comment),
                                     metadata: member.metadata,
                                     status: apiStatus(member.metadata)
@@ -373,6 +381,19 @@ class ProjectionBuilder {
         return [modifiers, member.type?.displayName, member.name]
                 .findAll { it != null && !it.toString().isEmpty() }
                 .join(" ")
+    }
+
+    private static String memberModifierAndType(DocMember member) {
+        String modifiers = member.modifiers?.join(" ") ?: ""
+        String type = ""
+        if (member.kind == DocMemberKind.CONSTRUCTOR) {
+            type = ""
+        } else if (member.kind in [DocMemberKind.METHOD, DocMemberKind.ANNOTATION_ELEMENT]) {
+            type = member.returnType?.displayName ?: ""
+        } else {
+            type = member.type?.displayName ?: ""
+        }
+        return [modifiers, type].findAll { it != null && !it.toString().isEmpty() }.join(" ")
     }
 
     private static List<DocMember> visibleMembers(List<DocMember> members, DocType owner, VisibilityPolicy policy) {

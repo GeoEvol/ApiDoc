@@ -25,8 +25,7 @@ class RenderPipelineCoordinatorV1JsonTest {
         assertTrue(new File(outputDir, "search-index.json").exists())
         assertTrue(new File(outputDir, "output-manifest.json").exists())
         assertTrue(new File(outputDir, "api-docs-md/index.md").exists())
-        assertTrue(new File(outputDir, "api-docs-html/index.html").exists())
-        assertTrue(new File(outputDir, "api-docs-html/assets/apidoc.css").exists())
+        assertFalse(new File(outputDir, "api-docs-html").exists())
         assertFalse(new File(outputDir, "index.md").exists())
         assertFalse(new File(outputDir, "index.html").exists())
         assertFalse(new File(outputDir, "index-all.html").exists())
@@ -48,8 +47,8 @@ class RenderPipelineCoordinatorV1JsonTest {
         assertTrue(manifest.outputs.corpus == "doc-corpus.json")
         assertTrue(manifest.outputs.nav == "nav-index.json")
         assertTrue(manifest.outputs.search == "search-index.json")
-        assertTrue(manifest.outputs.html == "api-docs-html/")
         assertTrue(manifest.outputs.markdown == "api-docs-md/")
+        assertFalse(manifest.outputs.containsKey("html"))
     }
 
     @Test

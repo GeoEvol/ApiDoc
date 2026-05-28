@@ -33,10 +33,7 @@ class ApiDocPluginEndToEndTest {
         assertTrue(new File(outputDir, "output-manifest.json").exists())
         assertTrue(new File(outputDir, "api-docs-md/index.md").exists())
         assertTrue(new File(outputDir, "api-docs-md/reference/com.example.fixture.PublicApi.md").exists())
-        assertTrue(new File(outputDir, "api-docs-html/index.html").exists())
-        assertTrue(new File(outputDir, "api-docs-html/reference/com.example.fixture.PublicApi.html").exists())
-        assertTrue(new File(outputDir, "api-docs-html/assets/apidoc.css").exists())
-        assertTrue(new File(outputDir, "api-docs-html/assets/search.js").exists())
+        assertFalse(new File(outputDir, "api-docs-html").exists())
         assertFalse(new File(outputDir, "index.md").exists())
         assertFalse(new File(outputDir, "index.html").exists())
         assertFalse(new File(outputDir, "com/example/fixture/PublicApi.md").exists())
@@ -47,8 +44,8 @@ class ApiDocPluginEndToEndTest {
         assertEquals("doc-corpus.json", manifest.outputs.corpus)
         assertEquals("nav-index.json", manifest.outputs.nav)
         assertEquals("search-index.json", manifest.outputs.search)
-        assertEquals("api-docs-html/", manifest.outputs.html)
         assertEquals("api-docs-md/", manifest.outputs.markdown)
+        assertFalse(manifest.outputs.containsKey("html"))
 
         def corpus = new JsonSlurper().parse(new File(outputDir, "doc-corpus.json"))
         def pages = new JsonSlurper().parse(new File(outputDir, "page-index.json"))
@@ -65,10 +62,6 @@ class ApiDocPluginEndToEndTest {
         String markdown = new File(outputDir, "api-docs-md/reference/com.example.fixture.PublicApi.md").text
         assertTrue(markdown.contains("PublicApi"))
         assertTrue(markdown.contains("helper"))
-
-        String html = new File(outputDir, "api-docs-html/reference/com.example.fixture.PublicApi.html").text
-        assertTrue(html.contains("PublicApi"))
-        assertTrue(html.contains("helper"))
     }
 
     @Test
@@ -91,7 +84,7 @@ class ApiDocPluginEndToEndTest {
         assertTrue(new File(outputDir, "nav-index.json").exists())
         assertTrue(new File(outputDir, "search-index.json").exists())
         assertTrue(new File(outputDir, "output-manifest.json").exists())
-        assertTrue(new File(outputDir, "api-docs-md/index.md").exists())
+        assertFalse(new File(outputDir, "api-docs-md").exists())
         assertTrue(new File(outputDir, "api-docs-html/index.html").exists())
         assertTrue(new File(outputDir, "api-docs-html/reference/com.example.fixture.PublicApi.html").exists())
         assertTrue(new File(outputDir, "api-docs-html/assets/search.js").exists())
@@ -102,7 +95,7 @@ class ApiDocPluginEndToEndTest {
 
         def manifest = new JsonSlurper().parse(new File(outputDir, "output-manifest.json"))
         assertEquals("api-docs-html/", manifest.outputs.html)
-        assertEquals("api-docs-md/", manifest.outputs.markdown)
+        assertFalse(manifest.outputs.containsKey("markdown"))
 
         String html = new File(outputDir, "api-docs-html/reference/com.example.fixture.PublicApi.html").text
         assertTrue(html.contains("PublicApi"))

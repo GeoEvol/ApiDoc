@@ -1,5 +1,6 @@
 package com.byd.apidoc.output
 
+import com.byd.apidoc.model.ApiConfig
 import groovy.json.JsonSlurper
 import org.junit.Test
 
@@ -35,5 +36,33 @@ class OutputManifestWriterTest {
         assertEquals("output-manifest.json", json.outputs.manifest)
         assertEquals("api-docs-html/", json.outputs.html)
         assertEquals("api-docs-md/", json.outputs.markdown)
+    }
+
+    @Test
+    void writesOnlyMarkdownEntryForMarkdownOutput() {
+        File outputDir = new File("build/test-output-manifest-markdown")
+        if (outputDir.exists()) {
+            outputDir.deleteDir()
+        }
+
+        File outputFile = new OutputManifestWriter().write(outputDir, ApiConfig.FORMAT_MARKDOWN)
+        def json = new JsonSlurper().parse(outputFile)
+
+        assertEquals("api-docs-md/", json.outputs.markdown)
+        assertTrue(!json.outputs.containsKey("html"))
+    }
+
+    @Test
+    void writesOnlyHtmlEntryForHtmlOutput() {
+        File outputDir = new File("build/test-output-manifest-html")
+        if (outputDir.exists()) {
+            outputDir.deleteDir()
+        }
+
+        File outputFile = new OutputManifestWriter().write(outputDir, ApiConfig.FORMAT_HTML)
+        def json = new JsonSlurper().parse(outputFile)
+
+        assertEquals("api-docs-html/", json.outputs.html)
+        assertTrue(!json.outputs.containsKey("markdown"))
     }
 }

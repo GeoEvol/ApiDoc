@@ -46,9 +46,15 @@ class RenderPipelineCoordinator {
                 outputDir: outputDir,
                 projectName: projectName ?: config?.projectName ?: "API Reference"
         )
-        markdownRenderer.render(renderContext)
-        htmlRenderer.render(renderContext)
-        outputManifestWriter.write(outputDir)
+        String outputFormat = config?.outputFormat ?: ApiConfig.FORMAT_MARKDOWN
+        if (ApiConfig.FORMAT_MARKDOWN.equalsIgnoreCase(outputFormat)) {
+            markdownRenderer.render(renderContext)
+        } else if (ApiConfig.FORMAT_HTML.equalsIgnoreCase(outputFormat)) {
+            htmlRenderer.render(renderContext)
+        } else {
+            throw new IllegalArgumentException("Unsupported output format: ${outputFormat}")
+        }
+        outputManifestWriter.write(outputDir, outputFormat)
     }
 
     private static VisibilityPolicy visibilityPolicy(ApiConfig config) {

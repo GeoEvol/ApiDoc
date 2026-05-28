@@ -4,6 +4,8 @@ import com.byd.apidoc.metadata.ApiMetadata
 import com.byd.apidoc.metadata.ApiValueRange
 import com.byd.apidoc.comment.CommentDoc
 import com.byd.apidoc.model.DocId
+import com.byd.apidoc.model.DocMemberKind
+import com.byd.apidoc.model.DocParameter
 import com.byd.apidoc.model.TypeRef
 
 class DocProjection {
@@ -122,6 +124,8 @@ class MemberSummaryModel {
     String name
     String displayName
     String url
+    String modifierAndType
+    String kind
     String summary
     ApiMetadata metadata
     ApiStatusModel status
@@ -132,6 +136,12 @@ class MemberDetailModel {
     String name
     String displayName
     String declaration
+    DocMemberKind kind
+    Set<String> modifiers = new LinkedHashSet<>()
+    TypeRef type
+    TypeRef returnType
+    List<DocParameter> parameters = []
+    List<TypeRef> throwsTypes = []
     String summary
     CommentDoc comment
     ApiMetadata metadata

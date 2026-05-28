@@ -22,7 +22,10 @@ source files, re-run visibility filtering, or re-resolve links.
 
 ## Root Outputs
 
-Each generation output directory contains:
+Each generation output directory contains the shared JSON files and the renderer
+directory selected by the task. `generateMarkdown` writes `api-docs-md/`;
+`generateHtml` writes `api-docs-html/`. The combined list below shows the paths
+across both task types:
 
 ```text
 doc-corpus.json
@@ -41,7 +44,8 @@ corpus.
 
 ## Manifest
 
-`output-manifest.json` contains:
+`output-manifest.json` contains the shared JSON entries and only the renderer
+entry that was actually generated:
 
 ```json
 {
@@ -54,12 +58,12 @@ corpus.
     "nav": "nav-index.json",
     "search": "search-index.json",
     "manifest": "output-manifest.json",
-    "html": "api-docs-html/",
     "markdown": "api-docs-md/"
   }
 }
 ```
 
+An HTML run uses `"html": "api-docs-html/"` instead of the `markdown` entry.
 The manifest is a file contract, not a complete build audit record.
 
 The root output directory is reserved for v1 data files and the two v1 renderer

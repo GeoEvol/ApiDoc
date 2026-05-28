@@ -34,6 +34,51 @@
     }
   });
 
+  document.addEventListener("click", function (event) {
+    var button = event.target.closest(".ad-copy-code");
+    if (!button) return;
+    var block = button.closest("pre");
+    var code = block ? block.querySelector("code") : null;
+    var value = code ? code.innerText.replace(/\s+$/g, "") : "";
+    if (!value) return;
+    var icon = button.querySelector("img");
+    var previous = icon ? icon.getAttribute("src") : "";
+    var checked = previous.replace(/copy\.svg$/, "checked.svg");
+    function markCopied() {
+      button.classList.add("is-copied");
+      if (icon && checked !== previous) icon.setAttribute("src", checked);
+      window.setTimeout(function () {
+        button.classList.remove("is-copied");
+        if (icon && previous) icon.setAttribute("src", previous);
+      }, 1200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value).then(markCopied).catch(function () {});
+    } else {
+      markCopied();
+    }
+  });
+
+  var navFilter = document.getElementById("ad-nav-filter");
+  if (navFilter && nav) {
+    navFilter.addEventListener("input", function () {
+      var query = navFilter.value.trim().toLowerCase();
+      Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
+        var packageText = (pkg.querySelector(".ad-package-name") || pkg).textContent.toLowerCase();
+        var visibleTypes = 0;
+        Array.prototype.forEach.call(pkg.querySelectorAll(".ad-book-type"), function (link) {
+          var text = (link.getAttribute("data-filter-text") || link.textContent || "").toLowerCase();
+          var visible = !query || text.indexOf(query) !== -1 || packageText.indexOf(query) !== -1;
+          link.hidden = !visible;
+          if (visible) visibleTypes++;
+        });
+        var packageVisible = !query || packageText.indexOf(query) !== -1 || visibleTypes > 0;
+        pkg.hidden = !packageVisible;
+        if (query && packageVisible) pkg.open = true;
+      });
+    });
+  }
+
   document.addEventListener("keydown", function (event) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
       var search = document.getElementById("ad-search");
@@ -50,22 +95,35 @@
   });
 
   var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".ad-devsite-toc a[href^='#']"));
-  if ("IntersectionObserver" in window && tocLinks.length) {
-    var byId = {};
-    tocLinks.forEach(function (link) {
-      byId[decodeURIComponent(link.getAttribute("href").slice(1))] = link;
+  if (tocLinks.length) {
+    var tocTargets = tocLinks.map(function (link) {
+      var id = decodeURIComponent(link.getAttribute("href").slice(1));
+      return { link: link, target: document.getElementById(id) };
+    }).filter(function (item) {
+      return item.target;
     });
-    var observer = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        tocLinks.forEach(function (link) { link.classList.remove("is-active"); });
-        var active = byId[entry.target.id];
-        if (active) active.classList.add("is-active");
+    var tocTicking = false;
+    function setActiveToc() {
+      tocTicking = false;
+      if (!tocTargets.length) return;
+      var active = tocTargets[0];
+      var anchorLine = Math.max(90, Math.floor(window.innerHeight * 0.22));
+      tocTargets.forEach(function (item) {
+        if (item.target.getBoundingClientRect().top <= anchorLine) active = item;
       });
-    }, { rootMargin: "-20% 0px -70% 0px", threshold: 0.01 });
-    Object.keys(byId).forEach(function (id) {
-      var section = document.getElementById(id);
-      if (section) observer.observe(section);
-    });
+      tocLinks.forEach(function (link) { link.classList.remove("is-active"); });
+      active.link.classList.add("is-active");
+      if (active.link.scrollIntoView) {
+        active.link.scrollIntoView({ block: "nearest" });
+      }
+    }
+    function requestTocSync() {
+      if (tocTicking) return;
+      tocTicking = true;
+      window.requestAnimationFrame(setActiveToc);
+    }
+    window.addEventListener("scroll", requestTocSync, { passive: true });
+    window.addEventListener("resize", requestTocSync);
+    setActiveToc();
   }
 })();

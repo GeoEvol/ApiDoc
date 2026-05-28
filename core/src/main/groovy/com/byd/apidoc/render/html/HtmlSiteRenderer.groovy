@@ -1,10 +1,14 @@
 package com.byd.apidoc.render.html
 
 import com.byd.apidoc.metadata.ApiValueRange
+import com.byd.apidoc.model.DocMemberKind
+import com.byd.apidoc.model.DocParameter
+import com.byd.apidoc.model.TypeRef
 import com.byd.apidoc.output.JsonWriter
 import com.byd.apidoc.output.OutputManifestWriter
 import com.byd.apidoc.projection.ApiStatusModel
 import com.byd.apidoc.projection.BreadcrumbModel
+import com.byd.apidoc.projection.DocProjection
 import com.byd.apidoc.projection.InheritedMemberGroupModel
 import com.byd.apidoc.projection.MemberDetailModel
 import com.byd.apidoc.projection.MemberGroupModel
@@ -29,6 +33,7 @@ class HtmlSiteRenderer {
     private final LinkPathResolver pathResolver = new LinkPathResolver()
 
     void render(RenderContext context) {
+        currentProjection = context.projection
         File root = new File(context.outputDir, OUTPUT_DIR)
         root.mkdirs()
         write(new File(root, "index.html"), shellRenderer.render(context, "API Reference", index(context), "", "index.html"))
@@ -60,7 +65,7 @@ class HtmlSiteRenderer {
 
     private static String packages(RenderContext context) {
         String items = context.projection.pages.findAll { it.kind == PageKind.PACKAGE }.sort { it.title }.collect { PageModel page ->
-            """          <li><a href="${escapeAttr(page.url)}">${escape(page.title)}</a>${page.summary ? " - ${escape(page.summary)}" : ""}</li>"""
+            """          <li class="ad-index-row"><img class="ad-index-icon" src="assets/icon/package.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(page.url)}">${escape(page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
         }.join("\n")
         return """      <article class="ad-api-index">
         <h1>Packages</h1>
@@ -75,7 +80,7 @@ ${items}
         String items = context.projection.typePages.sort { it.id?.qualifiedName ?: it.title }.collect { TypePageModel page ->
             PageModel pageModel = context.projection.pages.find { it.targetId?.stableKey() == page.id?.stableKey() }
             String url = pageModel?.url ?: "reference/${page.id?.qualifiedName}.html"
-            """          <li><a href="${escapeAttr(url)}">${escape(page.id?.qualifiedName ?: page.title)}</a>${page.summary ? " - ${escape(page.summary)}" : ""}</li>"""
+            """          <li class="ad-index-row"><img class="ad-index-icon" src="assets/icon/${typeIcon(page)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(page.id?.qualifiedName ?: page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
         }.join("\n")
         return """      <article class="ad-api-index">
         <h1>Classes</h1>
@@ -91,7 +96,7 @@ ${items}
         String items = types.collect { TypePageModel type ->
             PageModel model = context.projection.pages.find { it.targetId?.stableKey() == type.id?.stableKey() }
             String url = relativeUrl(page.url, model?.url ?: "reference/${type.id?.qualifiedName}.html")
-            """          <li><a href="${escapeAttr(url)}">${escape(type.title)}</a>${type.summary ? " - ${escape(type.summary)}" : ""}</li>"""
+            """          <li class="ad-index-row"><img class="ad-index-icon" src="${rootPrefix(page.url)}assets/icon/${typeIcon(type)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(type.title)}</a>${type.summary ? "<p>${escape(type.summary)}</p>" : ""}</div></li>"""
         }.join("\n")
         return """      <article class="ad-api-index">
         <h1>${escape(page.title)}</h1>
@@ -112,7 +117,7 @@ ${items}
         out << "          <h1>${escape(page.typeHeader?.title ?: page.title)}</h1>\n"
         out << apiStatus(page.apiStatus)
         if (page.typeHeader?.declaration ?: page.declaration) {
-            out << "          <pre class=\"ad-api-declaration\"><code>${escape(page.typeHeader?.declaration ?: page.declaration)}</code></pre>\n"
+            out << "          <pre class=\"ad-api-declaration ad-signature-card\"><code>${typeDeclaration(page, pageUrl)}</code><button class=\"ad-copy-code\" type=\"button\" aria-label=\"Copy declaration\"><img src=\"${rootPrefix(pageUrl)}assets/icon/copy.svg\" alt=\"\" aria-hidden=\"true\"></button></pre>\n"
         }
         out << "        </header>\n"
         String body = commentRenderer.renderBody(page.comment, pageUrl, context.projection)
@@ -130,7 +135,7 @@ ${items}
             out << "        <p><strong>Implements:</strong> ${page.interfaces.collect { typeRefRenderer.render(it, pageUrl, context.projection) }.join(', ')}</p>\n"
         }
         page.memberGroups.each { MemberGroupModel group ->
-            out << memberSummary(group)
+            out << memberSummary(group, pageUrl)
         }
         if (page.memberDetails) {
             out << "        <section class=\"ad-member-details\" id=\"details\">\n"
@@ -154,18 +159,24 @@ ${items}
         return "        <nav class=\"ad-breadcrumbs\" aria-label=\"Breadcrumbs\">${links}</nav>\n"
     }
 
-    private String memberSummary(MemberGroupModel group) {
+    private String memberSummary(MemberGroupModel group, String pageUrl) {
         String anchor = anchorName(group.title)
+        String prefix = rootPrefix(pageUrl)
         String rows = group.members.collect { MemberSummaryModel member ->
             String anchorId = member.id?.effectiveAnchorId() ?: member.name
+            String icon = memberIcon(member.kind)
             """            <tr>
-              <td><a href="#${escapeAttr(anchorId)}">${escape(member.displayName ?: member.name)}</a>${apiStatus(member.status, "ad-api-status ad-api-status-inline")}</td>
+              <td class="ad-summary-modifier">${escape(member.modifierAndType ?: '')}</td>
+              <td class="ad-summary-member"><img class="ad-member-icon" src="${prefix}assets/icon/${icon}.svg" alt="" aria-hidden="true"><a href="#${escapeAttr(anchorId)}">${escape(member.displayName ?: member.name)}</a>${apiStatus(member.status, "ad-api-status ad-api-status-inline")}</td>
               <td>${escape(member.summary ?: '')}</td>
             </tr>"""
         }.join("\n")
         return """        <section class="ad-member-summary" id="${escapeAttr(anchor)}">
           <h2>${escape(group.title)}</h2>
           <table>
+            <thead>
+              <tr><th>Modifier and Type</th><th>Member</th><th>Description</th></tr>
+            </thead>
             <tbody>
 ${rows}
             </tbody>
@@ -179,14 +190,14 @@ ${rows}
         out << "          <section id=\"${escapeAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\" class=\"ad-member-detail\">\n"
         out << "            <h3>${escape(detail.displayName ?: detail.name)} <button class=\"ad-copy-anchor\" type=\"button\" data-anchor=\"${escapeAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\" aria-label=\"Copy anchor link\">#</button></h3>\n"
         out << apiStatus(detail.status)
-        if (detail.declaration) out << "            <pre><code>${escape(detail.declaration)}</code></pre>\n"
+        if (detail.declaration) out << "            <pre class=\"ad-member-signature ad-signature-card\"><code>${memberDeclaration(detail, pageUrl)}</code><button class=\"ad-copy-code\" type=\"button\" aria-label=\"Copy signature\"><img src=\"${rootPrefix(pageUrl)}assets/icon/copy.svg\" alt=\"\" aria-hidden=\"true\"></button></pre>\n"
         String detailBody = commentRenderer.renderBody(detail.comment, pageUrl, context.projection)
         if (detailBody) {
             out << "            ${detailBody}\n"
         } else if (detail.summary) {
             out << "            <p>${escape(detail.summary)}</p>\n"
         }
-        String tags = commentRenderer.renderBlockTags(detail.comment, pageUrl, context.projection)
+        String tags = commentRenderer.renderBlockTags(detail.comment, pageUrl, context.projection, detail.throwsTypes)
         if (tags) out << "            ${tags}\n"
         out << "          </section>\n"
         return out.toString()
@@ -196,6 +207,14 @@ ${rows}
         StringBuilder out = new StringBuilder()
         out << "        <section class=\"ad-inherited-members\" id=\"inherited-members\">\n"
         out << "          <h2>Inherited Members</h2>\n"
+        if (page.inheritedMemberGroups?.any()) {
+            out << "          <div class=\"ad-inheritance-tree\" aria-label=\"Inheritance tree\">\n"
+            out << "            <div>${escape(page.title)}</div>\n"
+            page.inheritedMemberGroups.each { InheritedMemberGroupModel group ->
+                out << "            <div><span>&rdsh;</span> ${escape(group.ownerQualifiedName ?: group.ownerName ?: '')}</div>\n"
+            }
+            out << "          </div>\n"
+        }
         if (!page.inheritedMemberGroups) {
             out << "          <p><em>No inherited members.</em></p>\n"
         }
@@ -214,6 +233,55 @@ ${rows}
         return out.toString()
     }
 
+    private String typeDeclaration(TypePageModel page, String pageUrl) {
+        String raw = page.typeHeader?.declaration ?: page.declaration ?: ""
+        String base = raw
+                .replaceFirst(/\s+extends\s+.+$/, "")
+                .replaceFirst(/\s+implements\s+.+$/, "")
+        List<String> parts = [escape(base)]
+        TypeRef superType = page.typeHeader?.inheritance ?: page.inheritance
+        if (superType?.qualifiedName && superType.qualifiedName != "java.lang.Object") {
+            parts.add("extends ${typeRefRenderer.render(superType, pageUrl, nullSafeProjection(page))}")
+        }
+        List<TypeRef> interfaces = page.typeHeader?.interfaces ?: page.interfaces ?: []
+        if (interfaces) {
+            parts.add("implements ${interfaces.collect { typeRefRenderer.render(it, pageUrl, nullSafeProjection(page)) }.join(', ')}")
+        }
+        return parts.findAll { it }.join(" ")
+    }
+
+    private String memberDeclaration(MemberDetailModel detail, String pageUrl) {
+        if (!detail.kind && !detail.returnType && !detail.type && !detail.parameters && !detail.throwsTypes) {
+            return escape(detail.declaration)
+        }
+        String modifiers = detail.modifiers?.join(" ") ?: ""
+        String name = escape(detail.name ?: detail.displayName ?: "")
+        if (detail.kind in [DocMemberKind.METHOD, DocMemberKind.CONSTRUCTOR, DocMemberKind.ANNOTATION_ELEMENT]) {
+            String returnType = detail.kind == DocMemberKind.CONSTRUCTOR ? "" : typeRefRenderer.render(detail.returnType, pageUrl, nullSafeProjection(null))
+            String params = (detail.parameters ?: []).collect { DocParameter parameter -> renderParameter(parameter, pageUrl) }.join(", ")
+            String throwsPart = detail.throwsTypes ? " throws ${detail.throwsTypes.collect { typeRefRenderer.render(it, pageUrl, nullSafeProjection(null)) }.join(', ')}" : ""
+            return [escape(modifiers), returnType, "${name}(${params})${throwsPart}"]
+                    .findAll { it != null && !it.toString().isEmpty() }
+                    .join(" ")
+        }
+        String type = typeRefRenderer.render(detail.type, pageUrl, nullSafeProjection(null))
+        return [escape(modifiers), type, name].findAll { it != null && !it.toString().isEmpty() }.join(" ")
+    }
+
+    private String renderParameter(DocParameter parameter, String pageUrl) {
+        String type = typeRefRenderer.render(parameter?.type, pageUrl, nullSafeProjection(null))
+        if (parameter?.varargs && type.endsWith("[]")) {
+            type = "${type.substring(0, type.length() - 2)}..."
+        }
+        return [type, escape(parameter?.name ?: "")].findAll { it }.join(" ")
+    }
+
+    private DocProjection nullSafeProjection(TypePageModel ignored) {
+        return currentProjection
+    }
+
+    private DocProjection currentProjection
+
     private static String rightToc(TypePageModel page) {
         String items = (page.rightToc ?: []).collect { TocEntryModel entry ->
             "        <a class=\"ad-toc-level-${entry.level ?: 2}\" href=\"#${escapeAttr(entry.anchor)}\">${escape(entry.label)}</a>"
@@ -222,6 +290,18 @@ ${rows}
       <div class="ad-toc-title">On this page</div>
 ${items}
     </nav>"""
+    }
+
+    private static String typeIcon(TypePageModel page) {
+        return "class"
+    }
+
+    private static String memberIcon(String kind) {
+        String key = (kind ?: "").toLowerCase(Locale.ROOT)
+        if (key.contains("constant")) return "constant"
+        if (key.contains("field")) return "field"
+        if (key.contains("constructor") || key.contains("method") || key.contains("annotation")) return "method"
+        return "method"
     }
 
     private static String apiStatus(ApiStatusModel status, String cssClass = "ad-api-status") {

@@ -16,6 +16,11 @@ Renderer implementations must not require Javadoc API objects. Renderers consume
 
 ## Directory Layout
 
+`generateMarkdown` and `generateHtml` share the JSON outputs, but each task
+writes only its selected renderer directory. The combined layout below shows the
+paths across both task types; one task run should not create both
+`api-docs-md/` and `api-docs-html/`.
+
 ```text
 <output>/
 ├── doc-corpus.json
@@ -42,7 +47,9 @@ Renderer implementations must not require Javadoc API objects. Renderers consume
 
 ## Manifest
 
-`output-manifest.json` records the stable output entry points:
+`output-manifest.json` records the stable output entry points. The renderer
+entry is format-specific: Markdown runs include `markdown`, HTML runs include
+`html`.
 
 ```json
 {
@@ -53,12 +60,12 @@ Renderer implementations must not require Javadoc API objects. Renderers consume
     "nav": "nav-index.json",
     "search": "search-index.json",
     "manifest": "output-manifest.json",
-    "html": "api-docs-html/",
     "markdown": "api-docs-md/"
   }
 }
 ```
 
+An HTML run uses `"html": "api-docs-html/"` instead of the `markdown` entry.
 `generatedAt` may vary by run and must not be used as a stable cache key.
 
 ## doc-corpus.json

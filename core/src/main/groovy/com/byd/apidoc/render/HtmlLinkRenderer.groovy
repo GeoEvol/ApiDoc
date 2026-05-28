@@ -17,9 +17,7 @@ class HtmlLinkRenderer {
         if (!linkRef) {
             return label
         }
-        if (linkRef.kind == LinkRefKind.EXTERNAL && linkRef.externalUrl) {
-            return "<a href=\"${escapeAttr(linkRef.externalUrl)}\">${label}</a>"
-        }
+        if (linkRef.kind == LinkRefKind.EXTERNAL) return label
         if (linkRef.kind == LinkRefKind.INTERNAL && linkRef.targetId != null) {
             String pageUrl = projection.pages.find { it.targetId?.stableKey() == linkRef.targetId.stableKey() }?.url
             if (pageUrl) {
