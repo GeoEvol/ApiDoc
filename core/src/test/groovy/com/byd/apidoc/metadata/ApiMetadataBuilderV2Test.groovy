@@ -79,6 +79,33 @@ class ApiMetadataBuilderV2Test {
     }
 
     @Test
+    void extractsSupportedPlatformsFromAnnotationMetadata() {
+        DocType type = sampleCorpus().types.find { it.qualifiedName == "com.example.sdk.Foo" }
+        assertNotNull(type)
+
+        assertEquals(["DiLink300", "DiLink300F"], type.metadata.supportedPlatforms)
+        assertTrue(type.metadata.sourceAnnotations.contains("com.byd.dilink.anotation.Supported"))
+        assertTrue(type.metadata.metadataSources.any {
+            it.kind == "ANNOTATION" &&
+                    it.name == "Supported" &&
+                    it.property == "platforms" &&
+                    it.rawValue == ["DiLink300", "DiLink300F"]
+        })
+
+        DocMember field = sampleCorpus().members.find {
+            it.ownerId.qualifiedName == "com.example.sdk.Foo" && it.name == "DEFAULT_NAME"
+        }
+        assertNotNull(field)
+        assertEquals(["DiLink300VCP"], field.metadata.supportedPlatforms)
+
+        DocMember method = sampleCorpus().members.find {
+            it.ownerId.qualifiedName == "com.example.sdk.Foo" && it.name == "run" && it.parameters?.size() == 2
+        }
+        assertNotNull(method)
+        assertEquals(["DiLinkF_300VCP"], method.metadata.supportedPlatforms)
+    }
+
+    @Test
     void projectionStatusExposesExpandedMetadataWithoutRendererCoupling() {
         DocCorpus corpus = sampleCorpus()
 

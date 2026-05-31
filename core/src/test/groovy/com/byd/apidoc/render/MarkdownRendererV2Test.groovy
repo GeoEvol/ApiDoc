@@ -58,6 +58,9 @@ class MarkdownRendererV2Test {
         File root = new File(outputDir, "api-docs-md")
         String foo = new File(root, "reference/com.example.sdk.Foo.md").text
         assertTrue(foo.contains("[Packages](../packages.md) / [com.example.sdk](../package/com.example.sdk.md) / [Foo](com.example.sdk.Foo.md)"))
+        assertTrue(foo.contains("**Supported platforms:** `DiLink300`, `DiLink300F`"))
+        assertTrue(foo.contains("**Supported platforms:** `DiLink300VCP`"))
+        assertTrue(foo.contains("**Supported platforms:** `DiLinkF_300VCP`"))
         assertTrue(foo.contains("## Contents"))
         assertTrue(foo.contains("- [Constants](#constants)"))
         assertTrue(foo.contains("## Constants"))

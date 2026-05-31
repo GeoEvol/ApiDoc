@@ -4,6 +4,9 @@
 
   var toggle = document.querySelector(".ad-devsite-nav-toggle");
   var nav = document.getElementById("ad-book-nav");
+  var platformSelect = document.getElementById("ad-platform-select");
+  var platformStorageKey = "apidoc.platform";
+  var navCollapsedStorageKey = "apidoc.navCollapsed";
   if (toggle && nav) {
     toggle.addEventListener("click", function () {
       var open = document.body.classList.toggle("ad-nav-open");
@@ -15,6 +18,16 @@
         document.body.classList.remove("ad-nav-open");
         toggle.setAttribute("aria-expanded", "false");
       }
+    });
+  }
+
+  var bookToggle = document.querySelector(".ad-book-nav-toggle");
+  if (bookToggle) {
+    var storedCollapsed = localStorage.getItem(navCollapsedStorageKey) === "true";
+    document.body.classList.toggle("ad-nav-collapsed", storedCollapsed);
+    bookToggle.addEventListener("click", function () {
+      var collapsed = document.body.classList.toggle("ad-nav-collapsed");
+      localStorage.setItem(navCollapsedStorageKey, collapsed ? "true" : "false");
     });
   }
 
@@ -59,25 +72,81 @@
     }
   });
 
+  function currentPlatform() {
+    return platformSelect ? platformSelect.value || "all" : (localStorage.getItem(platformStorageKey) || "all");
+  }
+
+  function supportsPlatform(el, platform) {
+    if (platform === "all") return true;
+    var raw = el.getAttribute("data-platforms");
+    if (!raw || raw.trim() === "") return true;
+    return raw.split(/\s+/).indexOf(platform) !== -1;
+  }
+
+  function setPlatformHidden(el, hidden) {
+    el.classList.toggle("ad-platform-hidden", hidden);
+  }
+
+  function applyPlatformFilter() {
+    var platform = currentPlatform();
+    if (platformSelect) {
+      localStorage.setItem(platformStorageKey, platform);
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("[data-platforms]"), function (el) {
+      setPlatformHidden(el, !supportsPlatform(el, platform));
+    });
+    applyNavFilter();
+    window.dispatchEvent(new CustomEvent("apidoc-platform-change", { detail: { platform: platform } }));
+  }
+
   var navFilter = document.getElementById("ad-nav-filter");
-  if (navFilter && nav) {
-    navFilter.addEventListener("input", function () {
+  function applyNavFilter() {
+    if (navFilter && nav) {
       var query = navFilter.value.trim().toLowerCase();
       Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
+        if (!supportsPlatform(pkg, currentPlatform())) {
+          pkg.hidden = true;
+          return;
+        }
         var packageText = (pkg.querySelector(".ad-package-name") || pkg).textContent.toLowerCase();
         var visibleTypes = 0;
-        Array.prototype.forEach.call(pkg.querySelectorAll(".ad-book-type"), function (link) {
+        Array.prototype.forEach.call(pkg.querySelectorAll(".ad-book-overview, .ad-book-type"), function (link) {
           var text = (link.getAttribute("data-filter-text") || link.textContent || "").toLowerCase();
-          var visible = !query || text.indexOf(query) !== -1 || packageText.indexOf(query) !== -1;
+          var visible = supportsPlatform(link, currentPlatform()) && (!query || text.indexOf(query) !== -1 || packageText.indexOf(query) !== -1);
           link.hidden = !visible;
           if (visible) visibleTypes++;
         });
+        Array.prototype.forEach.call(pkg.querySelectorAll(".ad-package-group"), function (group) {
+          var next = group.nextElementSibling;
+          var hasVisibleType = false;
+          while (next && !next.classList.contains("ad-package-group")) {
+            if (next.matches && next.matches(".ad-book-type") && !next.hidden && supportsPlatform(next, currentPlatform())) {
+              hasVisibleType = true;
+              break;
+            }
+            next = next.nextElementSibling;
+          }
+          group.hidden = !hasVisibleType || !supportsPlatform(group, currentPlatform());
+        });
         var packageVisible = !query || packageText.indexOf(query) !== -1 || visibleTypes > 0;
-        pkg.hidden = !packageVisible;
+        pkg.hidden = !packageVisible || visibleTypes === 0;
         if (query && packageVisible) pkg.open = true;
       });
-    });
+    }
   }
+
+  if (platformSelect) {
+    var storedPlatform = localStorage.getItem(platformStorageKey) || "all";
+    if (Array.prototype.some.call(platformSelect.options, function (option) { return option.value === storedPlatform; })) {
+      platformSelect.value = storedPlatform;
+    }
+    platformSelect.addEventListener("change", applyPlatformFilter);
+  }
+
+  if (navFilter && nav) {
+    navFilter.addEventListener("input", applyNavFilter);
+  }
+  applyPlatformFilter();
 
   document.addEventListener("keydown", function (event) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {

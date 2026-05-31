@@ -11,8 +11,15 @@ import com.byd.apidoc.model.TypeRef
 class DocProjection {
     List<PageModel> pages = []
     List<TypePageModel> typePages = []
+    List<PackagePageModel> packagePages = []
     List<NavNode> nav = []
     List<SearchEntry> search = []
+    PlatformFilterModel platformFilter = new PlatformFilterModel()
+}
+
+class PlatformFilterModel {
+    String defaultValue = "all"
+    List<String> platforms = []
 }
 
 class PageModel {
@@ -23,6 +30,7 @@ class PageModel {
     DocId targetId
     String summary
     ApiMetadata metadata
+    List<String> platforms = []
 }
 
 class NavNode {
@@ -32,6 +40,7 @@ class NavNode {
     DocId targetId
     List<String> activePath = []
     String group
+    List<String> platforms = []
     List<NavNode> children = []
 }
 
@@ -47,6 +56,7 @@ class SearchEntry {
     ApiMetadata metadata
     ApiStatusModel status
     String displaySignature
+    List<String> platforms = []
     List<String> tokens = []
 }
 
@@ -61,6 +71,7 @@ class TypePageModel {
     List<BreadcrumbModel> breadcrumbs = []
     List<TocEntryModel> rightToc = []
     ApiStatusModel apiStatus
+    List<String> platforms = []
     AndroidTypeHeaderModel typeHeader
     TypeRef inheritance
     List<TypeRef> interfaces = []
@@ -116,6 +127,7 @@ class InheritedMemberGroupModel {
 class MemberGroupModel {
     String title
     String kind
+    List<String> platforms = []
     List<MemberSummaryModel> members = []
 }
 
@@ -129,6 +141,7 @@ class MemberSummaryModel {
     String summary
     ApiMetadata metadata
     ApiStatusModel status
+    List<String> platforms = []
 }
 
 class MemberDetailModel {
@@ -146,6 +159,24 @@ class MemberDetailModel {
     CommentDoc comment
     ApiMetadata metadata
     ApiStatusModel status
+    List<String> platforms = []
+}
+
+class PackagePageModel {
+    DocId id
+    String packageName
+    String url
+    String summary
+    ApiMetadata metadata
+    List<String> platforms = []
+    List<PackageTypeGroupModel> typeGroups = []
+}
+
+class PackageTypeGroupModel {
+    String label
+    String kind
+    List<String> platforms = []
+    List<TypePageModel> types = []
 }
 
 enum PageKind {
@@ -160,6 +191,7 @@ enum PageKind {
 enum NavNodeKind {
     ROOT,
     PACKAGE,
+    OVERVIEW,
     GROUP,
     TYPE,
     MEMBER

@@ -55,6 +55,18 @@
     return !kindFilter.value || String(item.kind || "") === kindFilter.value;
   }
 
+  function currentPlatform() {
+    return localStorage.getItem("apidoc.platform") || "all";
+  }
+
+  function matchesPlatform(item) {
+    var platform = currentPlatform();
+    if (platform === "all") return true;
+    var platforms = item.platforms || [];
+    if (!platforms || !platforms.length) return true;
+    return platforms.indexOf(platform) !== -1;
+  }
+
   function matchesLabel(item, query) {
     if (!query) return true;
     return [
@@ -108,7 +120,7 @@
       return;
     }
     var hits = items.filter(function (item) {
-      return matchesKind(item) && matchesLabel(item, query);
+      return matchesKind(item) && matchesPlatform(item) && matchesLabel(item, query);
     }).slice(0, 30);
     lastHits = hits;
     activeIndex = -1;
@@ -130,6 +142,7 @@
 
   input.addEventListener("input", function () { render(input.value); });
   kindFilter.addEventListener("change", function () { render(normalizedQuery()); });
+  window.addEventListener("apidoc-platform-change", function () { render(normalizedQuery()); });
   function onSearchKeydown(event) {
     if (!panel.classList.contains("open") || !lastHits.length) return;
     if (event.key === "ArrowDown") {

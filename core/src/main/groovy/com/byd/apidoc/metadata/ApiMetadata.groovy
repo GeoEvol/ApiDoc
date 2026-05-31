@@ -14,9 +14,18 @@ class ApiMetadata {
     Set<String> permissions = new LinkedHashSet<>()
     String nullability
     List<ApiValueRange> valueRanges = []
+    List<String> supportedPlatforms = []
+    List<MetadataSource> metadataSources = []
     Set<String> sourceTags = new LinkedHashSet<>()
     Set<String> sourceAnnotations = new LinkedHashSet<>()
     Map<String, Object> attributes = [:]
+}
+
+class MetadataSource {
+    String kind
+    String name
+    String property
+    Object rawValue
 }
 
 class ApiValueRange {

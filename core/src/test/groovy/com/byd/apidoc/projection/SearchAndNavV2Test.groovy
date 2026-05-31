@@ -22,6 +22,8 @@ class SearchAndNavV2Test {
         assertEquals(NavNodeKind.PACKAGE, packageNode.kind)
         assertEquals("package", packageNode.group)
         assertEquals(["com.example.sdk"], packageNode.activePath)
+        assertEquals(NavNodeKind.OVERVIEW, packageNode.children[0].kind)
+        assertEquals("Overview", packageNode.children[0].label)
 
         NavNode classes = packageNode.children.find { it.label == "Classes" }
         assertNotNull(classes)
@@ -90,6 +92,8 @@ class SearchAndNavV2Test {
         assertFalse(script.contains("React"))
         assertFalse(script.contains("Vue"))
         assertTrue(script.contains("ad-search-kind"))
+        assertTrue(script.contains("apidoc.platform"))
+        assertTrue(script.contains("matchesPlatform"))
         assertTrue(script.contains("catch(function"))
         assertTrue(script.contains("response.ok"))
         assertTrue(script.contains("aria-expanded"))

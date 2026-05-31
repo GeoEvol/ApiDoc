@@ -15,6 +15,8 @@ import com.byd.apidoc.projection.MemberGroupModel
 import com.byd.apidoc.projection.MemberSummaryModel
 import com.byd.apidoc.projection.PageKind
 import com.byd.apidoc.projection.PageModel
+import com.byd.apidoc.projection.PackagePageModel
+import com.byd.apidoc.projection.PackageTypeGroupModel
 import com.byd.apidoc.projection.TocEntryModel
 import com.byd.apidoc.projection.TypePageModel
 import com.byd.apidoc.render.HtmlCommentRenderer
@@ -65,7 +67,7 @@ class HtmlSiteRenderer {
 
     private static String packages(RenderContext context) {
         String items = context.projection.pages.findAll { it.kind == PageKind.PACKAGE }.sort { it.title }.collect { PageModel page ->
-            """          <li class="ad-index-row"><img class="ad-index-icon" src="assets/icon/package.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(page.url)}">${escape(page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
+            """          <li class="ad-index-row"${platformData(page.platforms)}><img class="ad-index-icon" src="assets/icon/package.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(page.url)}">${escape(page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
         }.join("\n")
         return """      <article class="ad-api-index">
         <h1>Packages</h1>
@@ -80,7 +82,7 @@ ${items}
         String items = context.projection.typePages.sort { it.id?.qualifiedName ?: it.title }.collect { TypePageModel page ->
             PageModel pageModel = context.projection.pages.find { it.targetId?.stableKey() == page.id?.stableKey() }
             String url = pageModel?.url ?: "reference/${page.id?.qualifiedName}.html"
-            """          <li class="ad-index-row"><img class="ad-index-icon" src="assets/icon/${typeIcon(page)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(page.id?.qualifiedName ?: page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
+            """          <li class="ad-index-row"${platformData(page.platforms)}><img class="ad-index-icon" src="assets/icon/${typeIcon(page)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(page.id?.qualifiedName ?: page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
         }.join("\n")
         return """      <article class="ad-api-index">
         <h1>Classes</h1>
@@ -92,18 +94,27 @@ ${items}
     }
 
     private String packagePage(RenderContext context, PageModel page) {
-        List<TypePageModel> types = context.projection.typePages.findAll { it.packageName == page.title }.sort { it.title }
-        String items = types.collect { TypePageModel type ->
-            PageModel model = context.projection.pages.find { it.targetId?.stableKey() == type.id?.stableKey() }
-            String url = relativeUrl(page.url, model?.url ?: "reference/${type.id?.qualifiedName}.html")
-            """          <li class="ad-index-row"><img class="ad-index-icon" src="${rootPrefix(page.url)}assets/icon/${typeIcon(type)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(type.title)}</a>${type.summary ? "<p>${escape(type.summary)}</p>" : ""}</div></li>"""
+        PackagePageModel packagePage = context.projection.packagePages.find { it.packageName == page.title }
+        List<PackageTypeGroupModel> groups = packagePage?.typeGroups ?: []
+        String items = groups.collect { PackageTypeGroupModel group ->
+            String rows = group.types.collect { TypePageModel type ->
+                PageModel model = context.projection.pages.find { it.targetId?.stableKey() == type.id?.stableKey() }
+                String url = relativeUrl(page.url, model?.url ?: "reference/${type.id?.qualifiedName}.html")
+                """            <li class="ad-index-row"${platformData(type.platforms)}><img class="ad-index-icon" src="${rootPrefix(page.url)}assets/icon/${typeIconForGroup(group.kind)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(type.title)}</a>${platformBadges(type.platforms)}${type.summary ? "<p>${escape(type.summary)}</p>" : ""}</div></li>"""
+            }.join("\n")
+            """        <section class="ad-package-type-group ad-package-group"${platformData(group.platforms)}>
+          <h2>${escape(group.label)}</h2>
+          <ul>
+${rows}
+          </ul>
+        </section>"""
         }.join("\n")
         return """      <article class="ad-api-index">
-        <h1>${escape(page.title)}</h1>
+        <h1>Package ${escape(page.title)}</h1>
+        <p class="ad-package-overview-label">Overview</p>
+        ${platformBadges(page.platforms)}
         ${page.summary ? "<p>${escape(page.summary)}</p>" : ""}
-        <ul>
 ${items}
-        </ul>
       </article>
 """
     }
@@ -115,6 +126,7 @@ ${items}
         out << "        <header class=\"ad-api-header\" id=\"summary\">\n"
         out << "          <p class=\"ad-api-package\">${escape(page.typeHeader?.packageName ?: page.packageName ?: 'default')}</p>\n"
         out << "          <h1>${escape(page.typeHeader?.title ?: page.title)}</h1>\n"
+        out << platformBadges(page.platforms)
         out << apiStatus(page.apiStatus)
         if (page.typeHeader?.declaration ?: page.declaration) {
             out << "          <pre class=\"ad-api-declaration ad-signature-card\"><code>${typeDeclaration(page, pageUrl)}</code><button class=\"ad-copy-code\" type=\"button\" aria-label=\"Copy declaration\"><img src=\"${rootPrefix(pageUrl)}assets/icon/copy.svg\" alt=\"\" aria-hidden=\"true\"></button></pre>\n"
@@ -165,9 +177,9 @@ ${items}
         String rows = group.members.collect { MemberSummaryModel member ->
             String anchorId = member.id?.effectiveAnchorId() ?: member.name
             String icon = memberIcon(member.kind)
-            """            <tr>
+            """            <tr${platformData(member.platforms)}>
               <td class="ad-summary-modifier">${escape(member.modifierAndType ?: '')}</td>
-              <td class="ad-summary-member"><img class="ad-member-icon" src="${prefix}assets/icon/${icon}.svg" alt="" aria-hidden="true"><a href="#${escapeAttr(anchorId)}">${escape(member.displayName ?: member.name)}</a>${apiStatus(member.status, "ad-api-status ad-api-status-inline")}</td>
+              <td class="ad-summary-member"><img class="ad-member-icon" src="${prefix}assets/icon/${icon}.svg" alt="" aria-hidden="true"><a href="#${escapeAttr(anchorId)}">${escape(member.displayName ?: member.name)}</a>${platformBadges(member.platforms)}${apiStatus(member.status, "ad-api-status ad-api-status-inline")}</td>
               <td>${escape(member.summary ?: '')}</td>
             </tr>"""
         }.join("\n")
@@ -187,8 +199,9 @@ ${rows}
 
     private String memberDetail(RenderContext context, String pageUrl, MemberDetailModel detail) {
         StringBuilder out = new StringBuilder()
-        out << "          <section id=\"${escapeAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\" class=\"ad-member-detail\">\n"
+        out << "          <section id=\"${escapeAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\" class=\"ad-member-detail\"${platformData(detail.platforms)}>\n"
         out << "            <h3>${escape(detail.displayName ?: detail.name)} <button class=\"ad-copy-anchor\" type=\"button\" data-anchor=\"${escapeAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\" aria-label=\"Copy anchor link\">#</button></h3>\n"
+        out << platformBadges(detail.platforms)
         out << apiStatus(detail.status)
         if (detail.declaration) out << "            <pre class=\"ad-member-signature ad-signature-card\"><code>${memberDeclaration(detail, pageUrl)}</code><button class=\"ad-copy-code\" type=\"button\" aria-label=\"Copy signature\"><img src=\"${rootPrefix(pageUrl)}assets/icon/copy.svg\" alt=\"\" aria-hidden=\"true\"></button></pre>\n"
         String detailBody = commentRenderer.renderBody(detail.comment, pageUrl, context.projection)
@@ -296,6 +309,17 @@ ${items}
         return "class"
     }
 
+    private static String typeIconForGroup(String group) {
+        String key = (group ?: "").toLowerCase(Locale.ROOT)
+        if (key.contains("interface")) return "interface"
+        if (key.contains("annotation")) return "annotation"
+        if (key.contains("enum")) return "enum"
+        if (key.contains("record")) return "record"
+        if (key.contains("exception")) return "exception"
+        if (key.contains("error")) return "exception"
+        return "class"
+    }
+
     private static String memberIcon(String kind) {
         String key = (kind ?: "").toLowerCase(Locale.ROOT)
         if (key.contains("constant")) return "constant"
@@ -335,6 +359,17 @@ ${items}
 
     private static Map<String, String> statusChip(String kind, String label) {
         [kind: kind ?: "info", label: label ?: ""]
+    }
+
+    private static String platformBadges(Collection<String> platforms) {
+        List<String> values = (platforms ?: []).findAll { it }.collect { it.toString() }
+        if (!values) return ""
+        return "          <div class=\"ad-platform-badges\">${values.collect { String platform -> "<span class=\"ad-platform-badge\">${escape(platform)}</span>" }.join("")}</div>\n"
+    }
+
+    private static String platformData(Collection<String> platforms) {
+        List<String> values = (platforms ?: []).findAll { it }.collect { it.toString() }
+        return values ? " data-platforms=\"${escapeAttr(values.join(' '))}\"" : ""
     }
 
     private static void write(File file, String text) {

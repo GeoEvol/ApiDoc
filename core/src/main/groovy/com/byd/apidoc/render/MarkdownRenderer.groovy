@@ -10,6 +10,8 @@ import com.byd.apidoc.projection.MemberGroupModel
 import com.byd.apidoc.projection.MemberSummaryModel
 import com.byd.apidoc.projection.PageKind
 import com.byd.apidoc.projection.PageModel
+import com.byd.apidoc.projection.PackagePageModel
+import com.byd.apidoc.projection.PackageTypeGroupModel
 import com.byd.apidoc.projection.TocEntryModel
 import com.byd.apidoc.projection.TypePageModel
 import com.byd.apidoc.reference.LinkPathResolver
@@ -65,13 +67,18 @@ class MarkdownRenderer {
     }
 
     private static String packagePage(RenderContext context, PageModel page) {
-        StringBuilder out = new StringBuilder("# ${escape(page.title)}\n\n")
+        StringBuilder out = new StringBuilder("# Package ${escape(page.title)}\n\n")
+        out << "Overview\n\n"
         if (page.summary) out << "${escape(page.summary)}\n\n"
-        List<TypePageModel> types = context.projection.typePages.findAll { it.packageName == page.title }.sort { it.title }
-        types.each { TypePageModel type ->
-            String url = markdownPath(context.projection.pages.find { it.targetId?.stableKey() == type.id?.stableKey() }?.url ?: "reference/${type.id?.qualifiedName}.html")
-            out << "- [${escape(type.title)}](${new LinkPathResolver().markdownUrl(markdownPath(page.url), url)})"
-            if (type.summary) out << " - ${escape(type.summary)}"
+        PackagePageModel packagePage = context.projection.packagePages.find { it.packageName == page.title }
+        (packagePage?.typeGroups ?: []).each { PackageTypeGroupModel group ->
+            out << "## ${escape(group.label)}\n\n"
+            group.types.each { TypePageModel type ->
+                String url = markdownPath(context.projection.pages.find { it.targetId?.stableKey() == type.id?.stableKey() }?.url ?: "reference/${type.id?.qualifiedName}.html")
+                out << "- [${escape(type.title)}](${new LinkPathResolver().markdownUrl(markdownPath(page.url), url)})"
+                if (type.summary) out << " - ${escape(type.summary)}"
+                out << "\n"
+            }
             out << "\n"
         }
         return out.toString()
@@ -82,6 +89,7 @@ class MarkdownRenderer {
         out << breadcrumbs(page, pageUrl)
         out << "<a id=\"summary\"></a>\n\n"
         out << "**Package:** `${page.typeHeader?.packageName ?: page.packageName ?: 'default'}`\n\n"
+        out << supportedPlatforms(page.platforms)
         out << apiStatus(page.apiStatus)
         out << contents(page)
         if (page.declaration) out << "```java\n${page.declaration}\n```\n\n"
@@ -113,6 +121,7 @@ class MarkdownRenderer {
             page.memberDetails.each { MemberDetailModel detail ->
                 out << "### ${escape(detail.displayName ?: detail.name)}\n\n"
                 out << "<a id=\"${escapeHtmlAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\"></a>\n\n"
+                out << supportedPlatforms(detail.platforms)
                 out << apiStatus(detail.status)
                 if (detail.declaration) out << "```java\n${detail.declaration}\n```\n\n"
                 String detailBody = commentRenderer.renderBody(detail.comment, pageUrl, context.projection)
@@ -178,6 +187,11 @@ class MarkdownRenderer {
         chips.each { String chip -> out << "- ${escape(chip)}\n" }
         out << "\n"
         return out.toString()
+    }
+
+    private static String supportedPlatforms(Collection<String> platforms) {
+        List<String> values = (platforms ?: []).findAll { it }.collect { "`" + escape(it.toString()) + "`" }
+        return values ? "**Supported platforms:** ${values.join(', ')}\n\n" : ""
     }
 
     private static String inlineStatus(ApiStatusModel status) {

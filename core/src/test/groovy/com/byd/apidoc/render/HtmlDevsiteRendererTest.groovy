@@ -56,6 +56,10 @@ class HtmlDevsiteRendererTest {
         assertTrue(text.contains("class=\"ad-devsite-shell\""))
         assertTrue(text.contains("class=\"ad-devsite-book-nav\""))
         assertTrue(text.contains("class=\"ad-nav-filter\""))
+        assertTrue(text.contains("class=\"ad-platform-selector\""))
+        assertTrue(text.contains("class=\"ad-platform-selector-select\""))
+        assertTrue(text.contains("DiLink300"))
+        assertTrue(text.contains("class=\"ad-book-nav-toggle\""))
         assertTrue(text.contains("class=\"ad-devsite-content\""))
         assertTrue(text.contains("class=\"ad-devsite-toc\""))
         assertTrue(text.contains("<article class=\"ad-api-article\">"))
@@ -69,6 +73,10 @@ class HtmlDevsiteRendererTest {
         assertTrue(text.contains("Packages"))
         assertTrue(text.contains("com.example.sdk"))
         assertTrue(text.contains("<h1>Foo</h1>"))
+        assertTrue(text.contains("class=\"ad-platform-badge\""))
+        assertTrue(text.contains("data-platforms=\"DiLink300 DiLink300F\""))
+        assertTrue(text.contains("data-platforms=\"DiLink300VCP\""))
+        assertTrue(text.contains("data-platforms=\"DiLinkF_300VCP\""))
         assertTrue(text.contains("Since 1.0"))
         assertTrue(text.contains("API 3"))
         assertTrue(text.contains("Constants"))
@@ -120,9 +128,14 @@ class HtmlDevsiteRendererTest {
         assertTrue(new File(root, "assets/icon/copy.svg").exists())
         assertTrue(new File(root, "assets/icon/checked.svg").exists())
         assertTrue(css.text.contains("@media"))
+        assertTrue(css.text.contains("--ad-link-hover"))
+        assertTrue(css.text.contains(".ad-platform-badge"))
+        assertTrue(css.text.contains(".ad-nav-collapsed"))
         assertTrue(css.text.contains(".ad-devsite-shell"))
         assertTrue(css.text.contains(".ad-signature-card"))
         assertTrue(js.text.contains("ad-devsite-nav-toggle"))
+        assertTrue(js.text.contains("apidoc.platform"))
+        assertTrue(js.text.contains("apidoc.navCollapsed"))
         assertTrue(js.text.contains("ad-nav-filter"))
         assertTrue(js.text.contains("ad-copy-code"))
         assertTrue(text.contains("../assets/apidoc-devsite.css"))
@@ -134,6 +147,18 @@ class HtmlDevsiteRendererTest {
         assertFalse(text.contains("vue"))
         assertFalse(css.text.contains("https://"))
         assertFalse(js.text.contains("https://"))
+
+        File packagePage = new File(root, "package/com.example.sdk.html")
+        assertTrue(packagePage.exists())
+        String packageText = packagePage.text
+        assertTrue(packageText.contains("<h1>Package com.example.sdk</h1>"))
+        assertTrue(packageText.contains("Overview"))
+        assertTrue(packageText.contains("Interfaces"))
+        assertTrue(packageText.contains("Classes"))
+        assertTrue(packageText.contains("Exceptions"))
+        assertTrue(packageText.contains("SampleException"))
+        assertTrue(packageText.contains("Errors"))
+        assertTrue(packageText.contains("SampleError"))
     }
 
     @Test
@@ -151,6 +176,7 @@ class HtmlDevsiteRendererTest {
                 ],
                 nav: [
                         new NavNode(label: "com.example.sdk", kind: NavNodeKind.PACKAGE, url: "package/com/example/sdk.html", targetId: packageId, children: [
+                                new NavNode(label: "Overview", kind: NavNodeKind.OVERVIEW, url: "package/com/example/sdk.html", targetId: packageId),
                                 new NavNode(label: "Classes", kind: NavNodeKind.GROUP, children: [
                                         new NavNode(label: "Foo", kind: NavNodeKind.TYPE, url: "reference/com/example/sdk/Foo.html", targetId: typeId)
                                 ])

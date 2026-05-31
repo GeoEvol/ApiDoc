@@ -1,5 +1,6 @@
 package com.example.sdk;
 
+import com.byd.dilink.anotation.Supported;
 import com.example.sdk.annotations.RequiresPermission;
 import java.time.Instant;
 import java.util.List;
@@ -17,12 +18,14 @@ import java.util.Map;
  * @date 2026-05-21
  * @permission android.permission.INTERNET
  */
+@Supported(platforms = {"DiLink300", "DiLink300F"})
 public class Foo<T extends Bar> implements ServiceContract {
     /**
      * Public constant value.
      *
      * @since 1.0
      */
+    @Supported(platforms = {"DiLink300VCP"})
     public static final String DEFAULT_NAME = "foo";
 
     /**
@@ -40,6 +43,7 @@ public class Foo<T extends Bar> implements ServiceContract {
      * @throws IllegalArgumentException if value is invalid
      * @see Bar
      */
+    @Supported(platforms = {"DiLinkF_300VCP"})
     @RequiresPermission("sample.permission.RUN")
     public Map<String, T> run(String value, List<? extends T> items) throws IllegalArgumentException {
         return Map.of();

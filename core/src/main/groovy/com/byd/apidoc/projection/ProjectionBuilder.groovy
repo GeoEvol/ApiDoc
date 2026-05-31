@@ -27,6 +27,7 @@ class ProjectionBuilder {
         List<DocPackage> packages = corpus.packages ?: []
         List<DocType> types = corpus.types ?: []
         List<DocMember> members = corpus.members ?: []
+        Map<String, DocPackage> packageByName = packages.collectEntries { DocPackage pkg -> [(pkg.name ?: ""): pkg] }
         InheritedMemberResolver inheritedMemberResolver = new InheritedMemberResolver()
 
         List<DocType> visibleTypes = types.findAll { DocType type ->
@@ -36,6 +37,20 @@ class ProjectionBuilder {
         Map<String, List<DocType>> typesByPackage = visibleTypes.groupBy { DocType type ->
             type.packageName ?: ""
         }
+        Map<String, List<DocMember>> visibleMembersByTypeKey = visibleTypes.collectEntries { DocType type ->
+            [(typeKey(type)): visibleMembers(members, type, effectivePolicy)]
+        }
+        Map<String, List<String>> typePlatformsByKey = visibleTypes.collectEntries { DocType type ->
+            [(typeKey(type)): typePlatforms(type, packageByName[type.packageName ?: ""])]
+        }
+        Map<String, List<String>> aggregatePlatformsByTypeKey = visibleTypes.collectEntries { DocType type ->
+            List<String> typePlatforms = typePlatformsByKey[typeKey(type)] ?: []
+            DocPackage ownerPackage = packageByName[type.packageName ?: ""]
+            List<String> memberPlatforms = (visibleMembersByTypeKey[typeKey(type)] ?: []).collectMany { DocMember member ->
+                memberPlatforms(member, typePlatforms, ownerPackage)
+            }
+            [(typeKey(type)): orderedPlatforms(typePlatforms + memberPlatforms)]
+        }
 
         projection.pages.add(indexPage())
         projection.pages.add(packagesPage())
@@ -44,23 +59,31 @@ class ProjectionBuilder {
         packages.sort { DocPackage pkg -> pkg.name ?: "" }.each { DocPackage pkg ->
             List<DocType> packageTypes = typesByPackage[pkg.name ?: ""] ?: []
             if (!packageTypes.isEmpty()) {
-                projection.pages.add(packagePage(pkg))
-                projection.search.add(packageSearchEntry(pkg))
+                List<String> packagePlatforms = packagePlatforms(pkg, packageTypes, aggregatePlatformsByTypeKey)
+                PageModel page = packagePage(pkg)
+                page.platforms = packagePlatforms
+                projection.pages.add(page)
+                projection.packagePages.add(packagePageModel(pkg, packageTypes, packagePlatforms, typePlatformsByKey, aggregatePlatformsByTypeKey))
+                projection.search.add(packageSearchEntry(pkg, packagePlatforms))
             }
         }
 
         visibleTypes.each { DocType type ->
-            List<DocMember> typeMembers = visibleMembers(members, type, effectivePolicy)
+            List<DocMember> typeMembers = visibleMembersByTypeKey[typeKey(type)] ?: []
             List<InheritedMemberGroupModel> inheritedMemberGroups = inheritedMemberResolver.resolve(corpus, type, effectivePolicy)
-            projection.pages.add(typePage(type))
-            projection.typePages.add(typePageModel(type, typeMembers, inheritedMemberGroups))
-            projection.search.add(typeSearchEntry(type))
+            List<String> typePlatforms = typePlatformsByKey[typeKey(type)] ?: []
+            PageModel page = typePage(type)
+            page.platforms = typePlatforms
+            projection.pages.add(page)
+            projection.typePages.add(typePageModel(type, typeMembers, inheritedMemberGroups, typePlatforms, packageByName[type.packageName ?: ""]))
+            projection.search.add(typeSearchEntry(type, typePlatforms))
             typeMembers.each { DocMember member ->
-                projection.search.add(memberSearchEntry(type, member))
+                projection.search.add(memberSearchEntry(type, member, memberPlatforms(member, typePlatforms, packageByName[type.packageName ?: ""])))
             }
         }
 
-        projection.nav.addAll(navNodes(packages, typesByPackage))
+        projection.nav.addAll(navNodes(packages, typesByPackage, aggregatePlatformsByTypeKey))
+        projection.platformFilter.platforms = orderedPlatforms(projection.search.collectMany { SearchEntry entry -> entry.platforms ?: [] })
         return projection
     }
 
@@ -115,7 +138,7 @@ class ProjectionBuilder {
         )
     }
 
-    private static List<NavNode> navNodes(List<DocPackage> packages, Map<String, List<DocType>> typesByPackage) {
+    private static List<NavNode> navNodes(List<DocPackage> packages, Map<String, List<DocType>> typesByPackage, Map<String, List<String>> typePlatformsByKey) {
         List<NavNode> roots = []
         packages.sort { DocPackage pkg -> pkg.name ?: "" }.each { DocPackage pkg ->
             List<DocType> types = typesByPackage[pkg.name ?: ""] ?: []
@@ -128,14 +151,26 @@ class ProjectionBuilder {
                     url: packageUrl(pkg.name),
                     targetId: pkg.id,
                     activePath: [pkg.name ?: "default"],
-                    group: "package"
+                    group: "package",
+                    platforms: packagePlatforms(pkg, types, typePlatformsByKey)
             )
+            packageNode.children.add(new NavNode(
+                    label: "Overview",
+                    kind: NavNodeKind.OVERVIEW,
+                    url: packageUrl(pkg.name),
+                    targetId: pkg.id,
+                    activePath: [pkg.name ?: "default", "Overview"],
+                    group: "overview",
+                    platforms: packageNode.platforms
+            ))
             groupedTypes(types).each { String groupName, List<DocType> grouped ->
+                List<String> groupPlatforms = orderedPlatforms(grouped.collectMany { DocType type -> platformForTypeKey(type, typePlatformsByKey) })
                 packageNode.children.add(new NavNode(
                         label: groupName,
                         kind: NavNodeKind.GROUP,
                         activePath: [pkg.name ?: "default", groupName],
                         group: groupKey(groupName),
+                        platforms: groupPlatforms,
                         children: grouped.collect { DocType type ->
                             new NavNode(
                                     label: type.name,
@@ -143,7 +178,8 @@ class ProjectionBuilder {
                                     url: typeUrl(type),
                                     targetId: type.id,
                                     activePath: [pkg.name ?: "default", groupName, type.name ?: ""],
-                                    group: groupKey(groupName)
+                                    group: groupKey(groupName),
+                                    platforms: platformForTypeKey(type, typePlatformsByKey)
                             )
                         }
                 ))
@@ -156,10 +192,12 @@ class ProjectionBuilder {
     private static Map<String, List<DocType>> groupedTypes(List<DocType> types) {
         LinkedHashMap<String, List<DocType>> groups = new LinkedHashMap<>()
         [
-                "Annotations": { DocType type -> type.kind == DocTypeKind.ANNOTATION },
                 "Interfaces" : { DocType type -> type.kind == DocTypeKind.INTERFACE },
-                "Classes"    : { DocType type -> type.kind in [DocTypeKind.CLASS, DocTypeKind.EXCEPTION, DocTypeKind.ERROR] },
+                "Classes"    : { DocType type -> type.kind == DocTypeKind.CLASS },
                 "Enums"      : { DocType type -> type.kind == DocTypeKind.ENUM },
+                "Annotations": { DocType type -> type.kind == DocTypeKind.ANNOTATION },
+                "Exceptions" : { DocType type -> type.kind == DocTypeKind.EXCEPTION },
+                "Errors"     : { DocType type -> type.kind == DocTypeKind.ERROR },
                 "Records"    : { DocType type -> type.kind == DocTypeKind.RECORD }
         ].each { String label, Closure<Boolean> matcher ->
             List<DocType> matches = types.findAll(matcher).sort { DocType type -> type.name ?: "" }
@@ -170,7 +208,7 @@ class ProjectionBuilder {
         return groups
     }
 
-    private static SearchEntry packageSearchEntry(DocPackage pkg) {
+    private static SearchEntry packageSearchEntry(DocPackage pkg, List<String> platforms = []) {
         new SearchEntry(
                 kind: SearchEntryKind.PACKAGE,
                 label: pkg.name ?: "default",
@@ -182,11 +220,12 @@ class ProjectionBuilder {
                 metadata: pkg.metadata,
                 status: apiStatus(pkg.metadata),
                 displaySignature: "package ${pkg.name ?: 'default'}",
+                platforms: copyPlatforms(platforms),
                 tokens: searchTokens("package", pkg.name, summary(pkg.comment))
         )
     }
 
-    private static SearchEntry typeSearchEntry(DocType type) {
+    private static SearchEntry typeSearchEntry(DocType type, List<String> platforms = []) {
         new SearchEntry(
                 kind: searchKind(type.kind),
                 label: type.name,
@@ -198,11 +237,12 @@ class ProjectionBuilder {
                 metadata: type.metadata,
                 status: apiStatus(type.metadata),
                 displaySignature: typeDeclaration(type),
+                platforms: copyPlatforms(platforms),
                 tokens: searchTokens(type.name, type.qualifiedName, type.packageName, searchKind(type.kind).name(), summary(type.comment))
         )
     }
 
-    private static SearchEntry memberSearchEntry(DocType owner, DocMember member) {
+    private static SearchEntry memberSearchEntry(DocType owner, DocMember member, List<String> platforms = []) {
         String anchor = member.id?.effectiveAnchorId() ?: member.name
         new SearchEntry(
                 kind: searchKind(member),
@@ -216,13 +256,15 @@ class ProjectionBuilder {
                 metadata: member.metadata,
                 status: apiStatus(member.metadata),
                 displaySignature: memberDeclaration(member),
+                platforms: copyPlatforms(platforms),
                 tokens: searchTokens(member.name, member.qualifiedName, owner.name, owner.qualifiedName, owner.packageName, searchKind(member).name(), summary(member.comment))
         )
     }
 
-    private static TypePageModel typePageModel(DocType type, List<DocMember> members, List<InheritedMemberGroupModel> inheritedMemberGroups = []) {
+    private static TypePageModel typePageModel(DocType type, List<DocMember> members, List<InheritedMemberGroupModel> inheritedMemberGroups = [], List<String> typePlatforms = [], DocPackage ownerPackage = null) {
         List<DocMember> effectiveMembers = members ?: []
         List<MemberDetailModel> details = effectiveMembers.collect { DocMember member ->
+            List<String> platforms = memberPlatforms(member, typePlatforms, ownerPackage)
             new MemberDetailModel(
                     id: member.id,
                     name: member.name,
@@ -237,7 +279,8 @@ class ProjectionBuilder {
                     summary: summary(member.comment),
                     comment: member.comment,
                     metadata: member.metadata,
-                    status: apiStatus(member.metadata)
+                    status: apiStatus(member.metadata),
+                    platforms: platforms
             )
         }
         return new TypePageModel(
@@ -248,6 +291,7 @@ class ProjectionBuilder {
                 summary: summary(type.comment),
                 comment: type.comment,
                 metadata: type.metadata,
+                platforms: copyPlatforms(typePlatforms),
                 breadcrumbs: breadcrumbs(type),
                 rightToc: rightToc(effectiveMembers),
                 apiStatus: apiStatus(type.metadata),
@@ -260,7 +304,7 @@ class ProjectionBuilder {
                 ),
                 inheritance: type.superType,
                 interfaces: type.interfaces ?: [],
-                memberGroups: memberGroups(type, effectiveMembers),
+                memberGroups: memberGroups(type, effectiveMembers, typePlatforms, ownerPackage),
                 memberDetails: details,
                 inheritedMemberGroups: inheritedMemberGroups ?: []
         )
@@ -312,7 +356,7 @@ class ProjectionBuilder {
         }
     }
 
-    private static List<MemberGroupModel> memberGroups(DocType type, List<DocMember> members) {
+    private static List<MemberGroupModel> memberGroups(DocType type, List<DocMember> members, List<String> typePlatforms = [], DocPackage ownerPackage = null) {
         List<DocMember> effectiveMembers = members ?: []
         LinkedHashMap<String, Closure<Boolean>> groups = [
                 "Nested Types" : { DocMember member -> false },
@@ -326,26 +370,52 @@ class ProjectionBuilder {
         groups.each { String title, Closure<Boolean> matcher ->
             List<DocMember> grouped = effectiveMembers.findAll(matcher)
             if (!grouped.isEmpty()) {
+                List<MemberSummaryModel> summaries = grouped.collect { DocMember member ->
+                    List<String> platforms = memberPlatforms(member, typePlatforms, ownerPackage)
+                    new MemberSummaryModel(
+                            id: member.id,
+                            name: member.name,
+                            displayName: member.id?.displayId ?: member.name,
+                            url: type == null ? null : "${typeUrl(type)}#${member.id?.effectiveAnchorId() ?: member.name}",
+                            modifierAndType: memberModifierAndType(member),
+                            kind: searchKind(member).name().toLowerCase(Locale.ROOT),
+                            summary: summary(member.comment),
+                            metadata: member.metadata,
+                            status: apiStatus(member.metadata),
+                            platforms: platforms
+                    )
+                }
                 result.add(new MemberGroupModel(
                         title: title,
                         kind: title.toUpperCase(Locale.ROOT).replaceAll(/\s+/, "_"),
-                        members: grouped.collect { DocMember member ->
-                            new MemberSummaryModel(
-                                    id: member.id,
-                                    name: member.name,
-                                    displayName: member.id?.displayId ?: member.name,
-                                    url: type == null ? null : "${typeUrl(type)}#${member.id?.effectiveAnchorId() ?: member.name}",
-                                    modifierAndType: memberModifierAndType(member),
-                                    kind: searchKind(member).name().toLowerCase(Locale.ROOT),
-                                    summary: summary(member.comment),
-                                    metadata: member.metadata,
-                                    status: apiStatus(member.metadata)
-                            )
-                        }
+                        platforms: orderedPlatforms(summaries.collectMany { MemberSummaryModel member -> member.platforms ?: [] }),
+                        members: summaries
                 ))
             }
         }
         return result
+    }
+
+    private static PackagePageModel packagePageModel(DocPackage pkg, List<DocType> types, List<String> platforms, Map<String, List<String>> typePlatformsByKey, Map<String, List<String>> aggregatePlatformsByTypeKey) {
+        new PackagePageModel(
+                id: pkg.id,
+                packageName: pkg.name ?: "default",
+                url: packageUrl(pkg.name),
+                summary: summary(pkg.comment),
+                metadata: pkg.metadata,
+                platforms: copyPlatforms(platforms),
+                typeGroups: groupedTypes(types).collect { String label, List<DocType> grouped ->
+                    List<TypePageModel> typeModels = grouped.collect { DocType type ->
+                        typePageModel(type, [], [], platformForTypeKey(type, typePlatformsByKey), pkg)
+                    }
+                    new PackageTypeGroupModel(
+                            label: label,
+                            kind: groupKey(label),
+                            platforms: orderedPlatforms(grouped.collectMany { DocType type -> platformForTypeKey(type, aggregatePlatformsByTypeKey) }),
+                            types: typeModels
+                    )
+                } as List<PackageTypeGroupModel>
+        )
     }
 
     private static String typeDeclaration(DocType type) {
@@ -452,8 +522,53 @@ class ProjectionBuilder {
                 "interfaces" : "interface",
                 "classes"    : "class",
                 "enums"      : "enum",
+                "exceptions" : "exception",
+                "errors"     : "error",
                 "records"    : "record"
         ][normalized] ?: normalized
+    }
+
+    private static List<String> typePlatforms(DocType type, DocPackage ownerPackage) {
+        List<String> own = copyPlatforms(type?.metadata?.supportedPlatforms)
+        if (own) return own
+        return copyPlatforms(ownerPackage?.metadata?.supportedPlatforms)
+    }
+
+    private static List<String> memberPlatforms(DocMember member, List<String> ownerTypePlatforms, DocPackage ownerPackage) {
+        List<String> own = copyPlatforms(member?.metadata?.supportedPlatforms)
+        if (own) return own
+        if (ownerTypePlatforms) return copyPlatforms(ownerTypePlatforms)
+        return copyPlatforms(ownerPackage?.metadata?.supportedPlatforms)
+    }
+
+    private static List<String> packagePlatforms(DocPackage pkg, List<DocType> types, Map<String, List<String>> typePlatformsByKey) {
+        List<String> explicit = copyPlatforms(pkg?.metadata?.supportedPlatforms)
+        if (explicit) return explicit
+        return orderedPlatforms((types ?: []).collectMany { DocType type -> platformForTypeKey(type, typePlatformsByKey) })
+    }
+
+    private static List<String> platformForTypeKey(DocType type, Map<String, List<String>> typePlatformsByKey) {
+        copyPlatforms(typePlatformsByKey[typeKey(type)])
+    }
+
+    private static String typeKey(DocType type) {
+        type?.id?.stableKey() ?: type?.qualifiedName ?: type?.name ?: ""
+    }
+
+    private static List<String> copyPlatforms(Collection platforms) {
+        orderedPlatforms(platforms)
+    }
+
+    private static List<String> orderedPlatforms(Collection platforms) {
+        LinkedHashSet<String> values = new LinkedHashSet<>()
+        (platforms ?: []).each { Object value ->
+            if (value instanceof Collection) {
+                values.addAll(orderedPlatforms((Collection) value))
+            } else if (value != null && value.toString().trim()) {
+                values.add(value.toString())
+            }
+        }
+        return values as List
     }
 
     private static List<String> searchTokens(String... values) {

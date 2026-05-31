@@ -19,6 +19,7 @@ import com.byd.apidoc.metadata.ApiMetadata
 import com.byd.apidoc.metadata.ApiValueRange
 import com.byd.apidoc.metadata.ApiVisibility
 import com.byd.apidoc.metadata.DeprecatedMetadata
+import com.byd.apidoc.metadata.MetadataSource
 import com.byd.apidoc.metadata.RemovedMetadata
 import com.byd.apidoc.model.DocAnnotation
 import com.byd.apidoc.model.DocCorpus
@@ -400,6 +401,18 @@ class DocCorpusBuilder {
             if (matchesAnnotation(annotation, "RequiresPermission")) {
                 metadata.permissions.addAll(permissionValues(annotation.values))
             }
+            if (matchesAnnotation(annotation, "Supported")) {
+                List<String> platforms = supportedPlatformValues(annotation.values)
+                if (platforms) {
+                    metadata.supportedPlatforms = platforms
+                    metadata.metadataSources.add(new MetadataSource(
+                            kind: "ANNOTATION",
+                            name: annotation.name ?: "Supported",
+                            property: "platforms",
+                            rawValue: platforms
+                    ))
+                }
+            }
             if (matchesAnnotation(annotation, "IntRange") || matchesAnnotation(annotation, "FloatRange")) {
                 ApiValueRange range = valueRange(annotation)
                 if (range != null) {
@@ -453,6 +466,12 @@ class DocCorpusBuilder {
             collectStrings(value, permissions)
         }
         return permissions
+    }
+
+    private static List<String> supportedPlatformValues(Map<String, Object> values) {
+        LinkedHashSet<String> platforms = new LinkedHashSet<>()
+        collectStrings(values?.get("platforms"), platforms)
+        return platforms as List
     }
 
     private static void collectStrings(Object value, Set<String> result) {
