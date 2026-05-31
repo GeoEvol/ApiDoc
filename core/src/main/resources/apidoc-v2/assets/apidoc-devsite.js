@@ -22,12 +22,19 @@
   }
 
   var bookToggle = document.querySelector(".ad-book-nav-toggle");
+  var bookToggleLabel = bookToggle ? bookToggle.querySelector(".ad-book-nav-toggle-label") : null;
+  function applyCollapsed(state) {
+    document.body.classList.toggle("ad-nav-collapsed", state);
+    if (bookToggle) bookToggle.setAttribute("aria-expanded", state ? "false" : "true");
+    if (bookToggleLabel) bookToggleLabel.textContent = state ? "Show navigation" : "Hide navigation";
+  }
   if (bookToggle) {
     var storedCollapsed = localStorage.getItem(navCollapsedStorageKey) === "true";
-    document.body.classList.toggle("ad-nav-collapsed", storedCollapsed);
+    applyCollapsed(storedCollapsed);
     bookToggle.addEventListener("click", function () {
-      var collapsed = document.body.classList.toggle("ad-nav-collapsed");
-      localStorage.setItem(navCollapsedStorageKey, collapsed ? "true" : "false");
+      var next = !document.body.classList.contains("ad-nav-collapsed");
+      applyCollapsed(next);
+      localStorage.setItem(navCollapsedStorageKey, next ? "true" : "false");
     });
   }
 
@@ -101,38 +108,51 @@
 
   var navFilter = document.getElementById("ad-nav-filter");
   function applyNavFilter() {
-    if (navFilter && nav) {
-      var query = navFilter.value.trim().toLowerCase();
-      Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
-        if (!supportsPlatform(pkg, currentPlatform())) {
-          pkg.hidden = true;
+    if (!navFilter || !nav) return;
+    var query = navFilter.value.trim().toLowerCase();
+    var platform = currentPlatform();
+    Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
+      if (!supportsPlatform(pkg, platform)) {
+        pkg.hidden = true;
+        return;
+      }
+      var packageText = (pkg.querySelector(".ad-package-name") || pkg).textContent.toLowerCase();
+      var visibleTypeCount = 0;
+
+      var overview = pkg.querySelector(":scope > .ad-book-overview");
+      if (overview) {
+        var ovOnPlatform = supportsPlatform(overview, platform);
+        var ovText = (overview.getAttribute("data-filter-text") || overview.textContent || "").toLowerCase();
+        var ovVisible = ovOnPlatform && (!query || ovText.indexOf(query) !== -1 || packageText.indexOf(query) !== -1);
+        overview.hidden = !ovVisible;
+      }
+
+      Array.prototype.forEach.call(pkg.querySelectorAll(":scope > .ad-package-group"), function (group) {
+        if (!supportsPlatform(group, platform)) {
+          group.hidden = true;
           return;
         }
-        var packageText = (pkg.querySelector(".ad-package-name") || pkg).textContent.toLowerCase();
-        var visibleTypes = 0;
-        Array.prototype.forEach.call(pkg.querySelectorAll(".ad-book-overview, .ad-book-type"), function (link) {
+        var groupVisible = 0;
+        Array.prototype.forEach.call(group.querySelectorAll(":scope > .ad-book-type"), function (link) {
           var text = (link.getAttribute("data-filter-text") || link.textContent || "").toLowerCase();
-          var visible = supportsPlatform(link, currentPlatform()) && (!query || text.indexOf(query) !== -1 || packageText.indexOf(query) !== -1);
+          var matches = !query || text.indexOf(query) !== -1 || packageText.indexOf(query) !== -1;
+          var visible = supportsPlatform(link, platform) && matches;
           link.hidden = !visible;
-          if (visible) visibleTypes++;
+          if (visible) groupVisible++;
         });
-        Array.prototype.forEach.call(pkg.querySelectorAll(".ad-package-group"), function (group) {
-          var next = group.nextElementSibling;
-          var hasVisibleType = false;
-          while (next && !next.classList.contains("ad-package-group")) {
-            if (next.matches && next.matches(".ad-book-type") && !next.hidden && supportsPlatform(next, currentPlatform())) {
-              hasVisibleType = true;
-              break;
-            }
-            next = next.nextElementSibling;
-          }
-          group.hidden = !hasVisibleType || !supportsPlatform(group, currentPlatform());
-        });
-        var packageVisible = !query || packageText.indexOf(query) !== -1 || visibleTypes > 0;
-        pkg.hidden = !packageVisible || visibleTypes === 0;
-        if (query && packageVisible) pkg.open = true;
+        group.hidden = groupVisible === 0;
+        if (query && groupVisible) group.open = true;
+        var countEl = group.querySelector(":scope > summary .ad-package-count");
+        if (countEl) countEl.textContent = String(groupVisible);
+        visibleTypeCount += groupVisible;
       });
-    }
+
+      var hasVisibleOverview = overview && !overview.hidden;
+      pkg.hidden = visibleTypeCount === 0 && !hasVisibleOverview;
+      if (query && !pkg.hidden) pkg.open = true;
+      var pkgCountEl = pkg.querySelector(":scope > summary .ad-package-count");
+      if (pkgCountEl) pkgCountEl.textContent = String(visibleTypeCount);
+    });
   }
 
   if (platformSelect) {
