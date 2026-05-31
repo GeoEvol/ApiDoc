@@ -90,8 +90,48 @@
     return raw.split(/\s+/).indexOf(platform) !== -1;
   }
 
-  function setPlatformHidden(el, hidden) {
-    el.classList.toggle("ad-platform-hidden", hidden);
+  function setPlatformDisabled(el, disabled) {
+    if (!el) return;
+    el.classList.toggle("is-platform-disabled", disabled);
+    if (disabled) {
+      el.setAttribute("aria-disabled", "true");
+      if (el.matches && el.matches("a")) {
+        el.setAttribute("tabindex", "-1");
+      }
+    } else {
+      el.removeAttribute("aria-disabled");
+      if (el.matches && el.matches("a")) {
+        el.removeAttribute("tabindex");
+      }
+    }
+  }
+
+  function hasSupportedTypeLink(container, platform, directOnly) {
+    var selector = directOnly ? ":scope > .ad-book-type" : ".ad-book-type";
+    return Array.prototype.some.call(container.querySelectorAll(selector), function (link) {
+      return supportsPlatform(link, platform);
+    });
+  }
+
+  function applyNavPlatformState(platform) {
+    if (!nav) return;
+    Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
+      var packageSupported = hasSupportedTypeLink(pkg, platform, false);
+      setPlatformDisabled(pkg, !packageSupported);
+      setPlatformDisabled(pkg.querySelector(":scope > summary"), !packageSupported);
+
+      var overview = pkg.querySelector(":scope > .ad-book-overview");
+      setPlatformDisabled(overview, !packageSupported);
+
+      Array.prototype.forEach.call(pkg.querySelectorAll(":scope > .ad-package-group"), function (group) {
+        var groupSupported = hasSupportedTypeLink(group, platform, true);
+        setPlatformDisabled(group, !groupSupported);
+        setPlatformDisabled(group.querySelector(":scope > summary"), !groupSupported);
+        Array.prototype.forEach.call(group.querySelectorAll(":scope > .ad-book-type"), function (link) {
+          setPlatformDisabled(link, !supportsPlatform(link, platform));
+        });
+      });
+    });
   }
 
   function applyPlatformFilter() {
@@ -100,59 +140,11 @@
       localStorage.setItem(platformStorageKey, platform);
     }
     Array.prototype.forEach.call(document.querySelectorAll("[data-platforms]"), function (el) {
-      setPlatformHidden(el, !supportsPlatform(el, platform));
+      if (nav && nav.contains(el)) return;
+      setPlatformDisabled(el, !supportsPlatform(el, platform));
     });
-    applyNavFilter();
+    applyNavPlatformState(platform);
     window.dispatchEvent(new CustomEvent("apidoc-platform-change", { detail: { platform: platform } }));
-  }
-
-  var navFilter = document.getElementById("ad-nav-filter");
-  function applyNavFilter() {
-    if (!navFilter || !nav) return;
-    var query = navFilter.value.trim().toLowerCase();
-    var platform = currentPlatform();
-    Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
-      if (!supportsPlatform(pkg, platform)) {
-        pkg.hidden = true;
-        return;
-      }
-      var packageText = (pkg.querySelector(".ad-package-name") || pkg).textContent.toLowerCase();
-      var visibleTypeCount = 0;
-
-      var overview = pkg.querySelector(":scope > .ad-book-overview");
-      if (overview) {
-        var ovOnPlatform = supportsPlatform(overview, platform);
-        var ovText = (overview.getAttribute("data-filter-text") || overview.textContent || "").toLowerCase();
-        var ovVisible = ovOnPlatform && (!query || ovText.indexOf(query) !== -1 || packageText.indexOf(query) !== -1);
-        overview.hidden = !ovVisible;
-      }
-
-      Array.prototype.forEach.call(pkg.querySelectorAll(":scope > .ad-package-group"), function (group) {
-        if (!supportsPlatform(group, platform)) {
-          group.hidden = true;
-          return;
-        }
-        var groupVisible = 0;
-        Array.prototype.forEach.call(group.querySelectorAll(":scope > .ad-book-type"), function (link) {
-          var text = (link.getAttribute("data-filter-text") || link.textContent || "").toLowerCase();
-          var matches = !query || text.indexOf(query) !== -1 || packageText.indexOf(query) !== -1;
-          var visible = supportsPlatform(link, platform) && matches;
-          link.hidden = !visible;
-          if (visible) groupVisible++;
-        });
-        group.hidden = groupVisible === 0;
-        if (query && groupVisible) group.open = true;
-        var countEl = group.querySelector(":scope > summary .ad-package-count");
-        if (countEl) countEl.textContent = String(groupVisible);
-        visibleTypeCount += groupVisible;
-      });
-
-      var hasVisibleOverview = overview && !overview.hidden;
-      pkg.hidden = visibleTypeCount === 0 && !hasVisibleOverview;
-      if (query && !pkg.hidden) pkg.open = true;
-      var pkgCountEl = pkg.querySelector(":scope > summary .ad-package-count");
-      if (pkgCountEl) pkgCountEl.textContent = String(visibleTypeCount);
-    });
   }
 
   if (platformSelect) {
@@ -163,9 +155,13 @@
     platformSelect.addEventListener("change", applyPlatformFilter);
   }
 
-  if (navFilter && nav) {
-    navFilter.addEventListener("input", applyNavFilter);
-  }
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest("a");
+    if (!link || !link.closest(".is-platform-disabled")) return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
   applyPlatformFilter();
 
   document.addEventListener("keydown", function (event) {

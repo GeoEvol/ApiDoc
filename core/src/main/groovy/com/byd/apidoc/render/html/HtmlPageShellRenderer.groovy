@@ -28,9 +28,6 @@ class HtmlPageShellRenderer {
     <nav class="ad-devsite-book-nav" id="ad-book-nav" aria-label="API navigation">
       <div class="ad-book-nav-scroll">
         ${platformSelector(context)}
-        <div class="ad-book-filter">
-          <input class="ad-nav-filter" id="ad-nav-filter" type="search" placeholder="Filter packages and types" autocomplete="off" aria-label="Filter packages and types">
-        </div>
 ${bookNav(context, prefix, currentUrl)}
       </div>
       <div class="ad-book-nav-footer">

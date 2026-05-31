@@ -56,11 +56,22 @@ class MarkdownRendererV2Test {
         ))
 
         File root = new File(outputDir, "api-docs-md")
+        assertTrue(new File(root, "index.md").text.contains("# Sample SDK"))
+        assertTrue(new File(root, "packages.md").text.contains("com.example.sdk"))
+        assertTrue(new File(root, "classes.md").text.contains("com.example.sdk.Foo"))
+        assertFalse(new File(root, "reference/com.example.sdk.HiddenApi.md").exists())
+
         String foo = new File(root, "reference/com.example.sdk.Foo.md").text
+        assertTrue(foo.contains("# Foo"))
+        assertTrue(foo.contains("**Package:** `com.example.sdk`"))
+        assertTrue(foo.contains("class Foo<T>"))
+        assertTrue(foo.contains("**Implements:** [ServiceContract](com.example.sdk.ServiceContract.md#com.example.sdk.ServiceContract)"))
         assertTrue(foo.contains("[Packages](../packages.md) / [com.example.sdk](../package/com.example.sdk.md) / [Foo](com.example.sdk.Foo.md)"))
         assertTrue(foo.contains("**Supported platforms:** `DiLink300`, `DiLink300F`"))
         assertTrue(foo.contains("**Supported platforms:** `DiLink300VCP`"))
         assertTrue(foo.contains("**Supported platforms:** `DiLinkF_300VCP`"))
+        assertTrue(foo.contains("`code literal`"))
+        assertTrue(foo.contains("**@permission:** android.permission.INTERNET"))
         assertTrue(foo.contains("## Contents"))
         assertTrue(foo.contains("- [Constants](#constants)"))
         assertTrue(foo.contains("## Constants"))
@@ -75,6 +86,11 @@ class MarkdownRendererV2Test {
         assertFalse(foo.contains("devsite.google"))
         assertFalse(foo.contains("react"))
         assertFalse(foo.contains("vue"))
+        assertTrue(foo.contains("**Parameters**"))
+        assertTrue(foo.contains("`value`: value description"))
+        assertTrue(foo.contains("**Returns:** mapped result"))
+        assertTrue(foo.contains("**Throws**"))
+        assertTrue(foo.contains("`IllegalArgumentException`: if value is invalid"))
 
         String inherited = new File(root, "reference/com.example.sdk.inheritance.DerivedService.md").text
         assertFalse(inherited.contains("## Inherited Members"))

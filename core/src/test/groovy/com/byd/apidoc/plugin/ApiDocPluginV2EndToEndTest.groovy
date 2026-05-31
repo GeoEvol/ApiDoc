@@ -46,6 +46,33 @@ class ApiDocPluginV2EndToEndTest {
         assertHtmlOnlyV2AcceptanceOutputs(new File(projectDir, "build/apidoc-html-out"))
     }
 
+    @Test
+    void includeHiddenAndRemovedConfigExpandsProjectionFromGradlePlugin() {
+        File projectDir = new File("build/testkit/generate-markdown-v2-internal")
+        recreateDir(projectDir)
+        writeSampleSdkProject(projectDir, true, true)
+
+        def result = GradleRunner.create()
+                .withProjectDir(projectDir)
+                .withArguments("generateMarkdown", "--stacktrace")
+                .withPluginClasspath()
+                .build()
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":generateMarkdown").outcome)
+
+        File outputDir = new File(projectDir, "build/apidoc-out")
+        def corpus = new JsonSlurper().parse(new File(outputDir, "doc-corpus.json"))
+        def pages = new JsonSlurper().parse(new File(outputDir, "page-index.json"))
+        def search = new JsonSlurper().parse(new File(outputDir, "search-index.json"))
+
+        assertTrue(corpus.types.any { it.qualifiedName == "com.example.sdk.HiddenApi" })
+        assertTrue(corpus.types.any { it.qualifiedName == "com.example.sdk.RemovedApi" })
+        assertTrue(pages.any { it.targetId?.qualifiedName == "com.example.sdk.HiddenApi" })
+        assertTrue(pages.any { it.targetId?.qualifiedName == "com.example.sdk.RemovedApi" })
+        assertTrue(search.any { it.qualifiedName == "com.example.sdk.HiddenApi" })
+        assertTrue(search.any { it.qualifiedName == "com.example.sdk.RemovedApi" })
+    }
+
     private static void assertCommonV2AcceptanceOutputs(File outputDir) {
         assertTrue(new File(outputDir, "doc-corpus.json").exists())
         assertTrue(new File(outputDir, "page-index.json").exists())
@@ -133,6 +160,7 @@ class ApiDocPluginV2EndToEndTest {
         assertTrue(indexHtml.contains("class=\"ad-devsite-topbar\""))
         assertTrue(indexHtml.contains("class=\"ad-devsite-shell\""))
         assertTrue(indexHtml.contains("class=\"ad-devsite-book-nav\""))
+        assertFalse(indexHtml.contains("ad-nav-filter"))
         assertTrue(indexHtml.contains("class=\"ad-devsite-content\""))
         assertTrue(indexHtml.contains("class=\"ad-devsite-toc\""))
         assertTrue(indexHtml.contains("src=\"assets/search.js\" data-root-prefix=\"\""))
@@ -145,6 +173,11 @@ class ApiDocPluginV2EndToEndTest {
         assertTrue(fooHtml.contains("href=\"#constants\""))
         assertTrue(fooHtml.contains("href=\"#details\""))
         assertTrue(fooHtml.contains("src=\"../assets/search.js\" data-root-prefix=\"../\""))
+        assertFalse(fooHtml.contains("<th>Description</th>"))
+        assertTrue(fooHtml.contains("class=\"ad-member-description\""))
+        assertTrue(fooHtml.contains("class=\"ad-section-kind-icon"))
+        assertFalse(fooHtml.contains("class=\"ad-member-icon\""))
+        assertTrue(fooHtml.contains("class=\"ad-detail-table\""))
         assertFalse(fooHtml.contains("devsite.google"))
         assertFalse(fooHtml.contains("cdn.jsdelivr.net"))
 
@@ -172,7 +205,7 @@ class ApiDocPluginV2EndToEndTest {
         }
     }
 
-    private static void writeSampleSdkProject(File projectDir) {
+    private static void writeSampleSdkProject(File projectDir, boolean includeHidden = false, boolean includeRemoved = false) {
         new File(projectDir, "settings.gradle").text = "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }\nrootProject.name = 'apidoc-v2-fixture'\n"
         new File(projectDir, "build.gradle").text = """
 plugins {
@@ -190,8 +223,8 @@ apiDoc {
     outputDir = ['build/apidoc-out', 'build/apidoc-html-out']
     sourceVersion = '${runtimeJavaMajor()}'
     dependencyClasspath.from()
-    includeHidden = false
-    includeRemoved = false
+    includeHidden = ${includeHidden}
+    includeRemoved = ${includeRemoved}
 }
 """
         copyDir(new File("src/test/resources/sample-sdk"), projectDir)

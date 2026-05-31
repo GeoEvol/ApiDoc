@@ -27,11 +27,10 @@ class HtmlCommentRenderer {
     }
 
     String renderBody(CommentDoc comment, String fromPage, DocProjection projection) {
-        String body = renderNodes(comment?.bodyNodes, fromPage, projection).trim()
-        return body ? "<p>${body}</p>" : ""
+        return renderBodyBlocks(comment?.bodyNodes, fromPage, projection)
     }
 
-    String renderBlockTags(CommentDoc comment, String fromPage, DocProjection projection, List<TypeRef> throwsTypes = []) {
+    String renderBlockTags(CommentDoc comment, String fromPage, DocProjection projection, List<TypeRef> throwsTypes = [], TypeRef returnType = null) {
         if (comment == null || !comment.blockTags) {
             return ""
         }
@@ -42,24 +41,29 @@ class HtmlCommentRenderer {
         }
         List<BlockTag> params = comment.blockTags.findAll { it.kind == BlockTagKind.PARAM }
         if (params) {
-            out << "<h4>Parameters</h4><dl>\n"
+            out << "<section class=\"ad-detail-section\"><h4>Parameters</h4><table class=\"ad-detail-table\"><tbody>\n"
             params.each { BlockTag tag ->
-                out << "<dt><code>${escape(tag.key)}</code></dt><dd>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</dd>\n"
+                out << "<tr><td><code>${escape(tag.key)}</code></td><td>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</td></tr>\n"
             }
-            out << "</dl>\n"
+            out << "</tbody></table></section>\n"
         }
         List<BlockTag> returns = comment.blockTags.findAll { it.kind == BlockTagKind.RETURN }
         if (returns) {
-            out << "<p><strong>Returns:</strong> ${returns.collect { renderNodes(it.body, fromPage, projection) ?: escape(it.rawText) }.findAll { it }.join(' ')}</p>\n"
+            String renderedReturnType = returnType != null ? typeRefRenderer.render(returnType, fromPage, projection) : "Return value"
+            out << "<section class=\"ad-detail-section\"><h4>Returns</h4><table class=\"ad-detail-table\"><tbody>\n"
+            returns.each { BlockTag tag ->
+                out << "<tr><td><code>${renderedReturnType}</code></td><td>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</td></tr>\n"
+            }
+            out << "</tbody></table></section>\n"
         }
         List<BlockTag> throwsTags = comment.blockTags.findAll { it.kind == BlockTagKind.THROWS }
         if (throwsTags) {
-            out << "<h4>Throws</h4><dl>\n"
+            out << "<section class=\"ad-detail-section\"><h4>Throws</h4><table class=\"ad-detail-table\"><tbody>\n"
             throwsTags.each { BlockTag tag ->
                 String key = renderThrowsKey(tag, fromPage, projection, throwsTypes)
-                out << "<dt><code>${key}</code></dt><dd>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</dd>\n"
+                out << "<tr><td><code>${key}</code></td><td>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</td></tr>\n"
             }
-            out << "</dl>\n"
+            out << "</tbody></table></section>\n"
         }
         List<BlockTag> seeTags = comment.blockTags.findAll { it.kind == BlockTagKind.SEE }
         if (seeTags) {
@@ -70,6 +74,24 @@ class HtmlCommentRenderer {
             out << "<p><strong>@${escape(tag.name)}:</strong> ${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</p>\n"
         }
         return out.toString()
+    }
+
+    String renderBodyBlocks(List<CommentNode> nodes, String fromPage, DocProjection projection) {
+        List<List<CommentNode>> blocks = [[]]
+        (nodes ?: []).each { CommentNode node ->
+            if (isParagraphBoundary(node)) {
+                if (blocks.last()) {
+                    blocks.add([])
+                }
+            } else {
+                blocks.last().add(node)
+            }
+        }
+        List<String> paragraphs = blocks.collect { List<CommentNode> block ->
+            renderNodes(block, fromPage, projection)
+        }.findAll { it }
+        if (!paragraphs) return ""
+        return "<div class=\"ad-detail-description\">${paragraphs.collect { "<p>${it}</p>" }.join("")}</div>"
     }
 
     String renderNodes(List<CommentNode> nodes, String fromPage, DocProjection projection) {
@@ -100,6 +122,12 @@ class HtmlCommentRenderer {
         if (value ==~ /(?i)<\/?p\s*\/?>/) return ""
         if (value ==~ /(?i)<br\s*\/?>/) return "<br>"
         return escape(value)
+    }
+
+    private static boolean isParagraphBoundary(CommentNode node) {
+        if (node?.kind != com.byd.apidoc.comment.CommentNodeKind.HTML) return false
+        String value = node.text ?: ""
+        return value ==~ /(?i)<\/?p\s*\/?>|<br\s*\/?>/
     }
 
     private String renderInline(InlineTag tag, String fromPage, DocProjection projection) {

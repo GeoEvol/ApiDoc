@@ -173,21 +173,18 @@ ${items}
 
     private String memberSummary(MemberGroupModel group, String pageUrl) {
         String anchor = anchorName(group.title)
-        String prefix = rootPrefix(pageUrl)
         String rows = group.members.collect { MemberSummaryModel member ->
             String anchorId = member.id?.effectiveAnchorId() ?: member.name
-            String icon = memberIcon(member.kind)
             """            <tr${platformData(member.platforms)}>
               <td class="ad-summary-modifier">${escape(member.modifierAndType ?: '')}</td>
-              <td class="ad-summary-member"><img class="ad-member-icon" src="${prefix}assets/icon/${icon}.svg" alt="" aria-hidden="true"><a href="#${escapeAttr(anchorId)}">${escape(member.displayName ?: member.name)}</a>${platformBadges(member.platforms)}${apiStatus(member.status, "ad-api-status ad-api-status-inline")}</td>
-              <td>${escape(member.summary ?: '')}</td>
+              <td class="ad-member-main"><a class="ad-member-name" href="#${escapeAttr(anchorId)}">${escape(member.displayName ?: member.name)}</a>${apiStatus(member.status, "ad-api-status ad-api-status-inline")}${member.summary ? "<div class=\"ad-member-description\">${escape(member.summary)}</div>" : ""}</td>
             </tr>"""
         }.join("\n")
         return """        <section class="ad-member-summary" id="${escapeAttr(anchor)}">
-          <h2>${escape(group.title)}</h2>
-          <table>
+          <h2 class="ad-member-section-title"><span class="ad-section-kind-icon ${escapeAttr(sectionIconClass(group.title))}" aria-hidden="true">${escape(sectionIcon(group.title))}</span><span>${escape(group.title)}</span></h2>
+          <table class="ad-member-summary-table">
             <thead>
-              <tr><th>Modifier and Type</th><th>Member</th><th>Description</th></tr>
+              <tr><th>Modifier and Type</th><th>Member</th></tr>
             </thead>
             <tbody>
 ${rows}
@@ -210,7 +207,7 @@ ${rows}
         } else if (detail.summary) {
             out << "            <p>${escape(detail.summary)}</p>\n"
         }
-        String tags = commentRenderer.renderBlockTags(detail.comment, pageUrl, context.projection, detail.throwsTypes)
+        String tags = commentRenderer.renderBlockTags(detail.comment, pageUrl, context.projection, detail.throwsTypes, detail.returnType)
         if (tags) out << "            ${tags}\n"
         out << "          </section>\n"
         return out.toString()
@@ -334,12 +331,24 @@ ${items}
         return "class"
     }
 
-    private static String memberIcon(String kind) {
-        String key = (kind ?: "").toLowerCase(Locale.ROOT)
-        if (key.contains("constant")) return "constant"
-        if (key.contains("field")) return "field"
-        if (key.contains("constructor") || key.contains("method") || key.contains("annotation")) return "method"
-        return "method"
+    private static String sectionIcon(String title) {
+        String key = (title ?: "").toLowerCase(Locale.ROOT)
+        if (key.contains("constant")) return "C"
+        if (key.contains("field")) return "f"
+        if (key.contains("constructor")) return "c"
+        if (key.contains("annotation")) return "@"
+        if (key.contains("method")) return "m"
+        return "m"
+    }
+
+    private static String sectionIconClass(String title) {
+        String key = (title ?: "").toLowerCase(Locale.ROOT)
+        if (key.contains("constant")) return "ad-kind-constant"
+        if (key.contains("field")) return "ad-kind-field"
+        if (key.contains("constructor")) return "ad-kind-constructor"
+        if (key.contains("annotation")) return "ad-kind-annotation"
+        if (key.contains("method")) return "ad-kind-method"
+        return "ad-kind-method"
     }
 
     private static String apiStatus(ApiStatusModel status, String cssClass = "ad-api-status") {
