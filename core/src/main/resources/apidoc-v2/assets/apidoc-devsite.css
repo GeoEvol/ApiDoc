@@ -1440,6 +1440,16 @@ code {
   }
 }
 
+.ad-devsite-toc a.is-active:hover,
+.ad-devsite-toc a.is-active:focus {
+  background: #eff6ff;
+  color: var(--ad-primary);
+}
+.ad-devsite-toc a.is-active:hover::before,
+.ad-devsite-toc a.is-active:focus::before {
+  background: var(--ad-primary);
+}
+
 .ad-search-result:hover,
 .ad-search-result:focus {
   background: var(--ad-link-hover-soft);
