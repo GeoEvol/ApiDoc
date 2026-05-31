@@ -431,10 +431,13 @@ class DocCorpusBuilder {
 
     private List<DocAnnotation> annotations(Element element) {
         return element?.annotationMirrors?.collect { AnnotationMirror annotation ->
+            Map valuesWithDefaults = context?.elements
+                    ? context.elements.getElementValuesWithDefaults(annotation)
+                    : annotation.elementValues
             new DocAnnotation(
                     name: annotation.annotationType.asElement().simpleName.toString(),
                     qualifiedName: annotation.annotationType.toString(),
-                    values: annotation.elementValues.collectEntries { entry ->
+                    values: valuesWithDefaults.collectEntries { entry ->
                         [(entry.key.simpleName.toString()): scalarAnnotationValue(entry.value)]
                     },
                     link: unresolved(annotation.annotationType.toString())
@@ -666,13 +669,15 @@ class DocCorpusBuilder {
         if (element.kind == ElementKind.ENUM) return DocTypeKind.ENUM
         if (element.kind == ElementKind.ANNOTATION_TYPE) return DocTypeKind.ANNOTATION
         if (element.kind.name() == "RECORD") return DocTypeKind.RECORD
-        TypeElement exception = context.elements.getTypeElement("java.lang.Exception")
-        if (exception != null && context.types.isSubtype(context.types.erasure(element.asType()), context.types.erasure(exception.asType()))) {
-            return DocTypeKind.EXCEPTION
-        }
+        if (element.kind != ElementKind.CLASS) return DocTypeKind.CLASS
+        TypeMirror erasedType = context.types.erasure(element.asType())
         TypeElement error = context.elements.getTypeElement("java.lang.Error")
-        if (error != null && context.types.isSubtype(context.types.erasure(element.asType()), context.types.erasure(error.asType()))) {
+        if (error != null && context.types.isSubtype(erasedType, context.types.erasure(error.asType()))) {
             return DocTypeKind.ERROR
+        }
+        TypeElement throwable = context.elements.getTypeElement("java.lang.Throwable")
+        if (throwable != null && context.types.isSubtype(erasedType, context.types.erasure(throwable.asType()))) {
+            return DocTypeKind.EXCEPTION
         }
         return DocTypeKind.CLASS
     }

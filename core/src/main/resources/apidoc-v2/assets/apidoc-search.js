@@ -28,6 +28,8 @@
       "<option value=\"ENUM\">Enums</option>",
       "<option value=\"ANNOTATION\">Annotations</option>",
       "<option value=\"RECORD\">Records</option>",
+      "<option value=\"EXCEPTION\">Exceptions</option>",
+      "<option value=\"ERROR\">Errors</option>",
       "<option value=\"CONSTRUCTOR\">Constructors</option>",
       "<option value=\"METHOD\">Methods</option>",
       "<option value=\"FIELD\">Fields</option>",

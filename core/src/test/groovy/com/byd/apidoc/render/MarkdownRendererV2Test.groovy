@@ -70,14 +70,16 @@ class MarkdownRendererV2Test {
         assertTrue(foo.contains("Public constant value."))
         assertTrue(foo.contains("[run(String value, List<? extends T> items)](#run(java.lang.String,java.util.List))"))
         assertTrue(foo.contains("[helper type](com.example.sdk.Bar.md#com.example.sdk.Bar)"))
+        assertTrue(foo.contains("plain list"))
+        assertFalse(foo.contains("https://docs.oracle.com"))
         assertFalse(foo.contains("devsite.google"))
         assertFalse(foo.contains("react"))
         assertFalse(foo.contains("vue"))
 
         String inherited = new File(root, "reference/com.example.sdk.inheritance.DerivedService.md").text
-        assertTrue(inherited.contains("## Inherited Members"))
-        assertTrue(inherited.contains("### Inherited from BaseService"))
-        assertTrue(inherited.contains("[start()](com.example.sdk.inheritance.BaseService.md#start()) - Starts the base service."))
+        assertFalse(inherited.contains("## Inherited Members"))
+        assertFalse(inherited.contains("### Inherited from BaseService"))
+        assertFalse(inherited.contains("[start()](com.example.sdk.inheritance.BaseService.md#start()) - Starts the base service."))
         assertFalse(inherited.contains("reserved for a later version"))
 
         String metadata = new File(root, "reference/com.example.sdk.AndroidMetadataApi.md").text

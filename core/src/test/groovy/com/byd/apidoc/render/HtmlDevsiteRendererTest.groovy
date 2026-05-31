@@ -68,7 +68,7 @@ class HtmlDevsiteRendererTest {
         assertTrue(text.contains("class=\"ad-api-status\""))
         assertTrue(text.contains("class=\"ad-member-summary\""))
         assertTrue(text.contains("class=\"ad-member-detail\""))
-        assertTrue(text.contains("id=\"inherited-members\""))
+        assertFalse(text.contains("id=\"inherited-members\""))
 
         assertTrue(text.contains("Packages"))
         assertTrue(text.contains("com.example.sdk"))
@@ -100,8 +100,8 @@ class HtmlDevsiteRendererTest {
         File derived = new File(root, "reference/com.example.sdk.inheritance.DerivedService.html")
         assertTrue(derived.exists())
         String inheritedText = derived.text
-        assertTrue(inheritedText.contains("Inherited from BaseService"))
-        assertTrue(inheritedText.contains("start"))
+        assertFalse(inheritedText.contains("Inherited Members"))
+        assertFalse(inheritedText.contains("Inherited from BaseService"))
 
         File metadata = new File(root, "reference/com.example.sdk.AndroidMetadataApi.html")
         assertTrue(metadata.exists())
@@ -159,6 +159,16 @@ class HtmlDevsiteRendererTest {
         assertTrue(packageText.contains("SampleException"))
         assertTrue(packageText.contains("Errors"))
         assertTrue(packageText.contains("SampleError"))
+
+        File classesPage = new File(root, "classes.html")
+        assertTrue(classesPage.exists())
+        String classesText = classesPage.text
+        String fooClassRow = classesText.readLines().find { it.contains("com.example.sdk.Foo") }
+        String exceptionClassRow = classesText.readLines().find { it.contains("com.example.sdk.SampleException") }
+        String errorClassRow = classesText.readLines().find { it.contains("com.example.sdk.SampleError") }
+        assertTrue(fooClassRow.contains("assets/icon/class.svg"))
+        assertTrue(exceptionClassRow.contains("assets/icon/exception.svg"))
+        assertTrue(errorClassRow.contains("assets/icon/exception.svg"))
     }
 
     @Test

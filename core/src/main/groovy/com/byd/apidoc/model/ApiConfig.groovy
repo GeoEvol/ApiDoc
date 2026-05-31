@@ -37,6 +37,7 @@ class ApiConfig {
     boolean includeInheritedMembers = true
     boolean includeHidden = false
     boolean includeRemoved = false
+    boolean externalLinksEnabled = false
 
     /**
      * Optional Java source version for javadoc parsing. When empty, the parser

@@ -31,6 +31,7 @@ public class Foo<T extends Bar> implements ServiceContract {
     /**
      * Creates a sample API instance.
      */
+    @Supported
     public Foo() {
     }
 

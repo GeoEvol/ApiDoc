@@ -63,7 +63,7 @@ class BuiltinHtmlRendererTest {
         assertTrue(text.contains("Constants"))
         assertTrue(text.contains("Constructors"))
         assertTrue(text.contains("Methods"))
-        assertTrue(text.contains("Inherited Members"))
+        assertFalse(text.contains("Inherited Members"))
         assertTrue(text.contains("<h4>Parameters</h4>"))
         assertTrue(text.contains("<dt><code>value</code></dt><dd>value description</dd>"))
         assertTrue(text.contains("<strong>Returns:</strong> mapped result"))

@@ -73,6 +73,8 @@ abstract class GenerateApiDocTask extends DefaultTask {
     @Input
     abstract Property<Boolean> getIncludeRemoved()
     @Input
+    abstract Property<Boolean> getExternalLinksEnabled()
+    @Input
     @Optional
     abstract Property<String> getSourceVersion()
     @Classpath
@@ -155,6 +157,7 @@ abstract class GenerateApiDocTask extends DefaultTask {
         config.includeInheritedMembers = includeInheritedMembers.get()
         config.includeHidden = includeHidden.get()
         config.includeRemoved = includeRemoved.get()
+        config.externalLinksEnabled = externalLinksEnabled.get()
         config.sourceVersion = sourceVersion.orNull ?: ""
         config.dependencyClasspath = dependencyClasspath.files.collect { it.absolutePath }
         return config

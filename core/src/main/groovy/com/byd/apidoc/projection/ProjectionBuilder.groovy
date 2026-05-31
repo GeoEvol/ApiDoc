@@ -285,6 +285,7 @@ class ProjectionBuilder {
         }
         return new TypePageModel(
                 id: type.id,
+                typeKind: type.kind ?: DocTypeKind.CLASS,
                 title: type.name,
                 packageName: type.packageName,
                 declaration: typeDeclaration(type),
@@ -326,7 +327,6 @@ class ProjectionBuilder {
         if (!members.isEmpty()) {
             entries.add(new TocEntryModel(label: "Details", anchor: "details"))
         }
-        entries.add(new TocEntryModel(label: "Inherited Members", anchor: "inherited-members"))
         return entries
     }
 
@@ -483,6 +483,10 @@ class ProjectionBuilder {
                 return SearchEntryKind.ANNOTATION
             case DocTypeKind.RECORD:
                 return SearchEntryKind.RECORD
+            case DocTypeKind.EXCEPTION:
+                return SearchEntryKind.EXCEPTION
+            case DocTypeKind.ERROR:
+                return SearchEntryKind.ERROR
             default:
                 return SearchEntryKind.CLASS
         }

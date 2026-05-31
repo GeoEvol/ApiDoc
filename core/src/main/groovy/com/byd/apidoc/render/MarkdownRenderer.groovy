@@ -134,7 +134,6 @@ class MarkdownRenderer {
                 if (tags) out << "${tags}\n"
             }
         }
-        out << inheritedMembers(page, pageUrl)
         return out.toString()
     }
 

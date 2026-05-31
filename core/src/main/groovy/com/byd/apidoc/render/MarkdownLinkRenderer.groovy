@@ -17,8 +17,8 @@ class MarkdownLinkRenderer {
         if (!linkRef) {
             return label
         }
-        if (linkRef.kind == LinkRefKind.EXTERNAL && linkRef.externalUrl) {
-            return "[${label}](${linkRef.externalUrl})"
+        if (linkRef.kind == LinkRefKind.EXTERNAL) {
+            return label
         }
         if (linkRef.kind == LinkRefKind.INTERNAL && linkRef.targetId != null) {
             String pageUrl = projection.pages.find { it.targetId?.stableKey() == linkRef.targetId.stableKey() }?.url

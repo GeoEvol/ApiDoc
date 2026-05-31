@@ -6,6 +6,7 @@ import com.byd.apidoc.comment.CommentDoc
 import com.byd.apidoc.model.DocId
 import com.byd.apidoc.model.DocMemberKind
 import com.byd.apidoc.model.DocParameter
+import com.byd.apidoc.model.DocTypeKind
 import com.byd.apidoc.model.TypeRef
 
 class DocProjection {
@@ -62,6 +63,7 @@ class SearchEntry {
 
 class TypePageModel {
     DocId id
+    DocTypeKind typeKind = DocTypeKind.CLASS
     String title
     String packageName
     String declaration
@@ -204,6 +206,8 @@ enum SearchEntryKind {
     ENUM,
     ANNOTATION,
     RECORD,
+    EXCEPTION,
+    ERROR,
     CONSTRUCTOR,
     METHOD,
     FIELD,

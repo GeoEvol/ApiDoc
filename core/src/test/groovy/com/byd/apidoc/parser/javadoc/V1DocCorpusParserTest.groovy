@@ -33,6 +33,9 @@ class V1DocCorpusParserTest {
         DocType mode = corpus.types.find { it.qualifiedName == "com.example.sdk.Mode" }
         DocType recordType = corpus.types.find { it.qualifiedName == "com.example.sdk.RecordType" }
         DocType annotationType = corpus.types.find { it.qualifiedName == "com.example.sdk.SdkAnnotation" }
+        DocType sampleException = corpus.types.find { it.qualifiedName == "com.example.sdk.SampleException" }
+        DocType sampleError = corpus.types.find { it.qualifiedName == "com.example.sdk.SampleError" }
+        DocType sampleThrowable = corpus.types.find { it.qualifiedName == "com.example.sdk.SampleThrowable" }
         DocType hidden = corpus.types.find { it.qualifiedName == "com.example.sdk.HiddenApi" }
         DocType removed = corpus.types.find { it.qualifiedName == "com.example.sdk.RemovedApi" }
         DocType deprecated = corpus.types.find { it.qualifiedName == "com.example.sdk.DeprecatedApi" }
@@ -45,6 +48,9 @@ class V1DocCorpusParserTest {
         assertNotNull(mode)
         assertNotNull(recordType)
         assertNotNull(annotationType)
+        assertNotNull(sampleException)
+        assertNotNull(sampleError)
+        assertNotNull(sampleThrowable)
         assertNotNull(hidden)
         assertNotNull(removed)
         assertNotNull(deprecated)
@@ -54,6 +60,9 @@ class V1DocCorpusParserTest {
         assertEquals(DocTypeKind.ENUM, mode.kind)
         assertEquals(DocTypeKind.RECORD, recordType.kind)
         assertEquals(DocTypeKind.ANNOTATION, annotationType.kind)
+        assertEquals(DocTypeKind.EXCEPTION, sampleException.kind)
+        assertEquals(DocTypeKind.ERROR, sampleError.kind)
+        assertEquals(DocTypeKind.EXCEPTION, sampleThrowable.kind)
 
         assertEquals("T", foo.typeParameters[0].name)
         assertEquals("com.example.sdk.Bar", foo.typeParameters[0].bounds[0].qualifiedName)
@@ -92,6 +101,26 @@ class V1DocCorpusParserTest {
         assertTrue(runMethods.every { it.id.canonicalId?.startsWith("method:com.example.sdk.Foo#run(") })
         assertTrue(runMethods.every { it.id.displayId?.startsWith("run(") })
         assertTrue(runMethods.every { it.id.anchorId == it.id.fragment })
+        assertTrue(runMethods.any { method ->
+            method.annotations.any { annotation ->
+                annotation.qualifiedName == "com.example.sdk.annotations.RequiresPermission" &&
+                        annotation.values.keySet().containsAll(["value", "allOf", "anyOf"]) &&
+                        annotation.values.allOf == [] &&
+                        annotation.values.anyOf == []
+            }
+        })
+
+        def constructor = corpus.members.find {
+            it.ownerId.qualifiedName == "com.example.sdk.Foo" && it.name == "Foo" && it.kind == DocMemberKind.CONSTRUCTOR
+        }
+        assertNotNull(constructor)
+        assertTrue(constructor.annotations.any { annotation ->
+            annotation.qualifiedName == "com.byd.dilink.anotation.Supported" &&
+                    annotation.values.containsKey("platforms") &&
+                    annotation.values.platforms == []
+        })
+        assertTrue(constructor.metadata.supportedPlatforms.isEmpty())
+        assertFalse(constructor.metadata.metadataSources.any { it.name == "Supported" && it.property == "platforms" })
 
         def convert = corpus.members.find {
             it.ownerId.qualifiedName == "com.example.sdk.Foo" && it.name == "convert"

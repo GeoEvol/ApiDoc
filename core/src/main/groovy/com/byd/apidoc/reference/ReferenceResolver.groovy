@@ -14,7 +14,7 @@ import com.byd.apidoc.model.TypeRef
 class ReferenceResolver {
     private final ExternalLinkResolver externalLinkResolver
 
-    ReferenceResolver(ExternalLinkResolver externalLinkResolver = new ExternalLinkResolver()) {
+    ReferenceResolver(ExternalLinkResolver externalLinkResolver = new ExternalLinkResolver([])) {
         this.externalLinkResolver = externalLinkResolver
     }
 
@@ -44,7 +44,8 @@ class ReferenceResolver {
         }
         comment.inlineNodes?.each { InlineTag tag ->
             if (tag.reference != null) {
-                tag.reference = resolveLink(tag.reference.rawTarget ?: tag.reference.fallbackText ?: tag.reference.label, tag.reference.label, index)
+                String label = plainText(tag.label) ?: tag.reference.label
+                tag.reference = resolveLink(tag.reference.rawTarget ?: tag.reference.fallbackText ?: tag.reference.label, label, index)
             }
         }
         comment.summaryNodes?.each { resolveNode(it, index) }
@@ -57,9 +58,22 @@ class ReferenceResolver {
     private void resolveNode(CommentNode node, ReferenceIndex index) {
         if (node == null) return
         if (node.inlineTag?.reference != null) {
-            node.inlineTag.reference = resolveLink(node.inlineTag.reference.rawTarget ?: node.inlineTag.reference.fallbackText ?: node.inlineTag.reference.label, node.inlineTag.reference.label, index)
+            String label = plainText(node.inlineTag.label) ?: node.inlineTag.reference.label
+            node.inlineTag.reference = resolveLink(node.inlineTag.reference.rawTarget ?: node.inlineTag.reference.fallbackText ?: node.inlineTag.reference.label, label, index)
         }
         node.children?.each { resolveNode(it, index) }
+    }
+
+    private static String plainText(List<CommentNode> nodes) {
+        String text = (nodes ?: []).collect { CommentNode node ->
+            if (node == null) return ""
+            if (node.text != null) return node.text
+            if (node.inlineTag?.body != null) return node.inlineTag.body
+            if (node.inlineTag?.label) return plainText(node.inlineTag.label)
+            if (node.children) return plainText(node.children)
+            return ""
+        }.join("").trim()
+        return text ?: null
     }
 
     private void resolveTypeRef(TypeRef typeRef, ReferenceIndex index) {

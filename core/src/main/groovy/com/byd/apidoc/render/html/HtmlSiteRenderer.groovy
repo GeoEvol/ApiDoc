@@ -3,6 +3,7 @@ package com.byd.apidoc.render.html
 import com.byd.apidoc.metadata.ApiValueRange
 import com.byd.apidoc.model.DocMemberKind
 import com.byd.apidoc.model.DocParameter
+import com.byd.apidoc.model.DocTypeKind
 import com.byd.apidoc.model.TypeRef
 import com.byd.apidoc.output.JsonWriter
 import com.byd.apidoc.output.OutputManifestWriter
@@ -157,7 +158,6 @@ ${items}
             }
             out << "        </section>\n"
         }
-        out << inheritedMembers(page, pageUrl)
         out << "      </article>\n"
         return out.toString()
     }
@@ -306,7 +306,21 @@ ${items}
     }
 
     private static String typeIcon(TypePageModel page) {
-        return "class"
+        switch (page?.typeKind) {
+            case DocTypeKind.INTERFACE:
+                return "interface"
+            case DocTypeKind.ENUM:
+                return "enum"
+            case DocTypeKind.ANNOTATION:
+                return "annotation"
+            case DocTypeKind.RECORD:
+                return "record"
+            case DocTypeKind.EXCEPTION:
+            case DocTypeKind.ERROR:
+                return "exception"
+            default:
+                return "class"
+        }
     }
 
     private static String typeIconForGroup(String group) {

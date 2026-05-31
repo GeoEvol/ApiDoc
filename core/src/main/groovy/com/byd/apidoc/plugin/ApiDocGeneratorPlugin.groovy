@@ -38,6 +38,7 @@ class ApiDocGeneratorPlugin implements Plugin<Project> {
             task.includeInheritedMembers = extension.includeInheritedMembers
             task.includeHidden = extension.includeHidden
             task.includeRemoved = extension.includeRemoved
+            task.externalLinksEnabled = extension.externalLinksEnabled
             task.sourceVersion = extension.sourceVersion
             task.dependencyClasspath.from(extension.dependencyClasspath)
 
@@ -81,6 +82,7 @@ class ApiDocGeneratorPlugin implements Plugin<Project> {
             task.includeInheritedMembers = extension.includeInheritedMembers
             task.includeHidden = extension.includeHidden
             task.includeRemoved = extension.includeRemoved
+            task.externalLinksEnabled = extension.externalLinksEnabled
             task.sourceVersion = extension.sourceVersion
             task.dependencyClasspath.from(extension.dependencyClasspath)
 

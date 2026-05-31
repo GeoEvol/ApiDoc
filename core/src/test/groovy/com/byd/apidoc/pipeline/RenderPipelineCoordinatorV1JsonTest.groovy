@@ -40,6 +40,10 @@ class RenderPipelineCoordinatorV1JsonTest {
 
         assertTrue(corpus.types.any { it.qualifiedName == "com.example.sdk.HiddenApi" })
         assertTrue(corpus.types.any { it.qualifiedName == "com.example.sdk.RemovedApi" })
+        def foo = corpus.types.find { it.qualifiedName == "com.example.sdk.Foo" }
+        assertTrue(foo.interfaces[0].linkRef.kind == "INTERNAL")
+        def convert = corpus.members.find { it.ownerId.qualifiedName == "com.example.sdk.Foo" && it.name == "convert" }
+        assertTrue(convert.parameters[0].type.linkRef.kind == "UNRESOLVED")
         assertFalse(pages.any { it.targetId?.qualifiedName == "com.example.sdk.HiddenApi" })
         assertFalse(search.any { it.qualifiedName == "com.example.sdk.RemovedApi" })
         assertTrue(search.any { it.qualifiedName == "com.example.sdk.Foo" })
@@ -75,6 +79,25 @@ class RenderPipelineCoordinatorV1JsonTest {
         assertTrue(pages.any { it.targetId?.qualifiedName == "com.example.sdk.RemovedApi" })
         assertTrue(search.any { it.qualifiedName == "com.example.sdk.HiddenApi" })
         assertTrue(search.any { it.qualifiedName == "com.example.sdk.RemovedApi" })
+    }
+
+    @Test
+    void externalLinksCanBeEnabledForV1JsonOutputs() {
+        File sourceRoot = new File("src/test/resources/sample-sdk/src/main/java")
+        File outputDir = new File("build/test-v1-pipeline-output/external-links")
+        recreateDir(outputDir)
+
+        ApiConfig config = new ApiConfig(
+                outputFormat: ApiConfig.FORMAT_MARKDOWN,
+                externalLinksEnabled: true
+        )
+
+        new RenderPipelineCoordinator().generate([sourceRoot.absolutePath], "Sample SDK", outputDir, config)
+
+        def corpus = new JsonSlurper().parse(new File(outputDir, "doc-corpus.json"))
+        def convert = corpus.members.find { it.ownerId.qualifiedName == "com.example.sdk.Foo" && it.name == "convert" }
+        assertTrue(convert.parameters[0].type.linkRef.kind == "EXTERNAL")
+        assertTrue(convert.parameters[0].type.linkRef.externalUrl.endsWith("java/time/Instant.html"))
     }
 
     private static void recreateDir(File dir) {

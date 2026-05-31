@@ -11,6 +11,7 @@ import com.byd.apidoc.parser.javadoc.JavadocApiParser
 import com.byd.apidoc.parser.javadoc.JavadocParseResult
 import com.byd.apidoc.projection.DocProjection
 import com.byd.apidoc.projection.ProjectionBuilder
+import com.byd.apidoc.reference.ExternalLinkResolver
 import com.byd.apidoc.reference.ReferenceResolver
 import com.byd.apidoc.render.BuiltinHtmlRenderer
 import com.byd.apidoc.render.MarkdownRenderer
@@ -22,7 +23,6 @@ class RenderPipelineCoordinator {
     private final ProjectionWriter projectionWriter = new ProjectionWriter()
     private final OutputManifestWriter outputManifestWriter = new OutputManifestWriter()
     private final ProjectionBuilder projectionBuilder = new ProjectionBuilder()
-    private final ReferenceResolver referenceResolver = new ReferenceResolver()
     private final InheritDocResolver inheritDocResolver = new InheritDocResolver()
     private final MarkdownRenderer markdownRenderer = new MarkdownRenderer()
     private final BuiltinHtmlRenderer htmlRenderer = new BuiltinHtmlRenderer()
@@ -33,6 +33,9 @@ class RenderPipelineCoordinator {
     }
 
     private void writeV1Outputs(DocCorpus docCorpus, File outputDir, ApiConfig config, String projectName) {
+        ReferenceResolver referenceResolver = new ReferenceResolver(
+                config?.externalLinksEnabled ? new ExternalLinkResolver() : new ExternalLinkResolver([])
+        )
         referenceResolver.resolve(docCorpus)
         inheritDocResolver.resolve(docCorpus)
         docCorpusWriter.write(docCorpus, outputDir)

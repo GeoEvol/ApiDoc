@@ -34,8 +34,8 @@ class ProjectionBuilderV2Test {
     void typePageModelHasRightTocEntries() {
         TypePageModel fooPage = fooPage()
 
-        assertEquals(["Summary", "Constants", "Constructors", "Methods", "Details", "Inherited Members"], fooPage.rightToc*.label)
-        assertEquals(["summary", "constants", "constructors", "methods", "details", "inherited-members"], fooPage.rightToc*.anchor)
+        assertEquals(["Summary", "Constants", "Constructors", "Methods", "Details"], fooPage.rightToc*.label)
+        assertEquals(["summary", "constants", "constructors", "methods", "details"], fooPage.rightToc*.anchor)
     }
 
     @Test
@@ -46,6 +46,16 @@ class ProjectionBuilderV2Test {
         assertEquals(["CONSTANTS", "CONSTRUCTORS", "METHODS"], fooPage.memberGroups*.kind)
         assertTrue(fooPage.memberGroups.find { it.title == "Constants" }.members*.name.contains("DEFAULT_NAME"))
         assertTrue(fooPage.memberGroups.find { it.title == "Methods" }.members*.name.contains("run"))
+    }
+
+    @Test
+    void typePageModelExposesTypeKindForRendererAndProjectionJson() {
+        DocProjection projection = new ProjectionBuilder().build(sampleCorpus(), new VisibilityPolicy())
+
+        assertEquals(DocTypeKind.CLASS, projection.typePages.find { it.id.qualifiedName == "com.example.sdk.Foo" }.typeKind)
+        assertEquals(DocTypeKind.EXCEPTION, projection.typePages.find { it.id.qualifiedName == "com.example.sdk.SampleException" }.typeKind)
+        assertEquals(DocTypeKind.ERROR, projection.typePages.find { it.id.qualifiedName == "com.example.sdk.SampleError" }.typeKind)
+        assertEquals(DocTypeKind.EXCEPTION, projection.typePages.find { it.id.qualifiedName == "com.example.sdk.SampleThrowable" }.typeKind)
     }
 
     @Test

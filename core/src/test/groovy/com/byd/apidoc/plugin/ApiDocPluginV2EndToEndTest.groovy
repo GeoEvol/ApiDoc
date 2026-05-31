@@ -88,9 +88,9 @@ class ApiDocPluginV2EndToEndTest {
         assertFalse(manifest.outputs.containsKey("html"))
 
         String inheritedMarkdown = new File(markdownRoot, "reference/com.example.sdk.inheritance.DerivedService.md").text
-        assertTrue(inheritedMarkdown.contains("## Inherited Members"))
-        assertTrue(inheritedMarkdown.contains("### Inherited from BaseService"))
-        assertTrue(inheritedMarkdown.contains("[start()](com.example.sdk.inheritance.BaseService.md#start()) - Starts the base service."))
+        assertFalse(inheritedMarkdown.contains("## Inherited Members"))
+        assertFalse(inheritedMarkdown.contains("### Inherited from BaseService"))
+        assertFalse(inheritedMarkdown.contains("[start()](com.example.sdk.inheritance.BaseService.md#start()) - Starts the base service."))
 
         String fooMarkdown = new File(markdownRoot, "reference/com.example.sdk.Foo.md").text
         assertTrue(fooMarkdown.contains("## API Status"))
@@ -149,9 +149,8 @@ class ApiDocPluginV2EndToEndTest {
         assertFalse(fooHtml.contains("cdn.jsdelivr.net"))
 
         String inheritedHtml = new File(htmlRoot, "reference/com.example.sdk.inheritance.DerivedService.html").text
-        assertTrue(inheritedHtml.contains("id=\"inherited-members\""))
-        assertTrue(inheritedHtml.contains("Inherited from BaseService"))
-        assertTrue(inheritedHtml.contains("start()"))
+        assertFalse(inheritedHtml.contains("id=\"inherited-members\""))
+        assertFalse(inheritedHtml.contains("Inherited from BaseService"))
 
         assertSearchLinksResolveFromRootAndNestedPages(htmlRoot, rootSearch)
     }
