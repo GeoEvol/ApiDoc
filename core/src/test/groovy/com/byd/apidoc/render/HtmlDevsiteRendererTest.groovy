@@ -148,6 +148,22 @@ class HtmlDevsiteRendererTest {
         assertFalse(css.text.contains("https://"))
         assertFalse(js.text.contains("https://"))
 
+        assertTrue(text.contains("class=\"ad-book-nav-scroll\""))
+        assertTrue(text.contains("class=\"ad-book-nav-footer\""))
+        assertTrue(text.contains("class=\"ad-book-nav-toggle\""))
+        assertTrue(text.contains("class=\"ad-book-nav-toggle-label\">Hide navigation"))
+        assertTrue(text.contains("class=\"ad-book-nav-toggle-icon\""))
+        assertTrue(text.contains("assets/icon/chevron-double.svg"))
+        assertTrue(text.contains("<details class=\"ad-package-group\""))
+        assertTrue(text.contains("data-group-kind=\"interfaces\""))
+        assertTrue(text.contains("data-group-kind=\"classes\""))
+        assertTrue(text.contains("class=\"ad-group-label\">Interfaces</span>"))
+        assertTrue(text.contains("class=\"ad-group-label\">Classes</span>"))
+        assertTrue(new File(root, "assets/icon/chevron-double.svg").exists())
+        assertTrue(css.text.contains("--ad-link-hover-soft"))
+        assertTrue(css.text.contains(".ad-package-group"))
+        assertTrue(css.text.contains(".ad-book-nav-footer"))
+
         File packagePage = new File(root, "package/com.example.sdk.html")
         assertTrue(packagePage.exists())
         String packageText = packagePage.text

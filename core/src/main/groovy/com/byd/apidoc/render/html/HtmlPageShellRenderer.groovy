@@ -26,12 +26,19 @@ class HtmlPageShellRenderer {
   </header>
   <div class="ad-devsite-shell">
     <nav class="ad-devsite-book-nav" id="ad-book-nav" aria-label="API navigation">
-      ${platformSelector(context)}
-      <div class="ad-book-filter">
-        <input class="ad-nav-filter" id="ad-nav-filter" type="search" placeholder="Filter packages and types" autocomplete="off" aria-label="Filter packages and types">
-      </div>
+      <div class="ad-book-nav-scroll">
+        ${platformSelector(context)}
+        <div class="ad-book-filter">
+          <input class="ad-nav-filter" id="ad-nav-filter" type="search" placeholder="Filter packages and types" autocomplete="off" aria-label="Filter packages and types">
+        </div>
 ${bookNav(context, prefix, currentUrl)}
-      <button class="ad-book-nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="ad-book-nav">‹</button>
+      </div>
+      <div class="ad-book-nav-footer">
+        <button class="ad-book-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="true">
+          <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron-double.svg" alt="" aria-hidden="true">
+          <span class="ad-book-nav-toggle-label">Hide navigation</span>
+        </button>
+      </div>
     </nav>
     <main class="ad-devsite-content" id="main-content">
 ${body}
@@ -52,25 +59,52 @@ ${body}
         out << "      <a class=\"ad-book-link${currentUrl == 'classes.html' ? ' is-current' : ''}\" href=\"${prefix}classes.html\"><img class=\"ad-nav-icon\" src=\"${prefix}assets/icon/type.svg\" alt=\"\" aria-hidden=\"true\">Classes</a>\n"
         (context.projection?.nav ?: []).each { NavNode node ->
             int typeCount = (node.children ?: []).sum { NavNode group -> group.kind == com.byd.apidoc.projection.NavNodeKind.GROUP ? (group.children?.size() ?: 0) : 0 } as int
-            boolean open = currentUrl == node.url || (node.children ?: []).any { NavNode group -> currentUrl == group.url || (group.children ?: []).any { NavNode child -> currentUrl == child.url } }
-            out << "      <details class=\"ad-book-section ad-package\"${platformData(node.platforms)}${open ? ' open' : ''}>\n"
+            boolean packageOpen = isOnDescendantUrl(node, currentUrl)
+            out << "      <details class=\"ad-book-section ad-package\"${platformData(node.platforms)}${packageOpen ? ' open' : ''}>\n"
             out << "        <summary class=\"ad-book-package ad-nav-item${currentUrl == node.url ? ' is-current' : ''}\"${platformData(node.platforms)}><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-package-name\">${escape(node.label)}</span><a class=\"ad-package-link\" href=\"${prefix}${escapeAttr(node.url ?: '')}\" aria-label=\"Open package ${escapeAttr(node.label)}\"><img src=\"${prefix}assets/icon/package.svg\" alt=\"\" aria-hidden=\"true\"></a><span class=\"ad-package-count\">${typeCount}</span></summary>\n"
             node.children.each { NavNode group ->
                 if (group.kind == com.byd.apidoc.projection.NavNodeKind.OVERVIEW) {
                     String current = currentUrl == group.url ? " is-current" : ""
                     out << "        <a class=\"ad-book-overview ad-nav-item${current}\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} Overview")}\" href=\"${prefix}${escapeAttr(group.url ?: '')}\"><img class=\"ad-kind-icon\" src=\"${prefix}assets/icon/package.svg\" alt=\"\" aria-hidden=\"true\"><span>${escape(group.label)}</span></a>\n"
                 } else {
-                    out << "        <div class=\"ad-book-group ad-package-group\"${platformData(group.platforms)}>${escape(group.label)}</div>\n"
+                    boolean groupOpen = (group.children ?: []).any { NavNode child -> currentUrl == child.url }
+                    int groupCount = group.children?.size() ?: 0
+                    String groupKind = kindKey(group.group ?: group.label)
+                    String icon = iconForGroup(group.group ?: group.label)
+                    out << "        <details class=\"ad-package-group\" data-group-kind=\"${escapeAttr(groupKind)}\"${platformData(group.platforms)}${groupOpen ? ' open' : ''}>\n"
+                    out << "          <summary class=\"ad-book-group ad-nav-item\"${platformData(group.platforms)}><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-group-label\">${escape(group.label)}</span><span class=\"ad-package-count\">${groupCount}</span></summary>\n"
                     group.children.each { NavNode child ->
                         String current = currentUrl == child.url ? " is-current" : ""
-                        String icon = iconForGroup(group.group ?: group.label)
-                        out << "        <a class=\"ad-book-type ad-nav-item${current}\"${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><img class=\"ad-kind-icon\" src=\"${prefix}assets/icon/${icon}.svg\" alt=\"\" aria-hidden=\"true\"><span>${escape(child.label)}</span></a>\n"
+                        out << "          <a class=\"ad-book-type ad-nav-item${current}\"${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><img class=\"ad-kind-icon\" src=\"${prefix}assets/icon/${icon}.svg\" alt=\"\" aria-hidden=\"true\"><span>${escape(child.label)}</span></a>\n"
                     }
+                    out << "        </details>\n"
                 }
             }
             out << "      </details>\n"
         }
         return out.toString()
+    }
+
+    private static boolean isOnDescendantUrl(NavNode pkg, String currentUrl) {
+        if (currentUrl == pkg.url) return true
+        for (NavNode child : (pkg.children ?: [])) {
+            if (currentUrl == child.url) return true
+            for (NavNode grand : (child.children ?: [])) {
+                if (currentUrl == grand.url) return true
+            }
+        }
+        return false
+    }
+
+    private static String kindKey(String label) {
+        String key = (label ?: "").toLowerCase(Locale.ROOT).trim()
+        if (key.contains("interface")) return "interfaces"
+        if (key.contains("annotation")) return "annotations"
+        if (key.contains("enum")) return "enums"
+        if (key.contains("record")) return "records"
+        if (key.contains("exception")) return "exceptions"
+        if (key.contains("error")) return "errors"
+        return "classes"
     }
 
     private static String platformSelector(RenderContext context) {
