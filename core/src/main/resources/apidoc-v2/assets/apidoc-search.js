@@ -9,34 +9,10 @@
   var items = [];
   var activeIndex = -1;
   var lastHits = [];
-  var kindFilter = document.getElementById("ad-search-kind");
 
   input.setAttribute("aria-controls", panel.id || "ad-search-results");
   input.setAttribute("aria-expanded", "false");
   panel.setAttribute("role", "listbox");
-
-  if (!kindFilter) {
-    kindFilter = document.createElement("select");
-    kindFilter.id = "ad-search-kind";
-    kindFilter.className = "ad-search-kind";
-    kindFilter.setAttribute("aria-label", "Search kind");
-    kindFilter.innerHTML = [
-      "<option value=\"\">All</option>",
-      "<option value=\"PACKAGE\">Packages</option>",
-      "<option value=\"CLASS\">Classes</option>",
-      "<option value=\"INTERFACE\">Interfaces</option>",
-      "<option value=\"ENUM\">Enums</option>",
-      "<option value=\"ANNOTATION\">Annotations</option>",
-      "<option value=\"RECORD\">Records</option>",
-      "<option value=\"EXCEPTION\">Exceptions</option>",
-      "<option value=\"ERROR\">Errors</option>",
-      "<option value=\"CONSTRUCTOR\">Constructors</option>",
-      "<option value=\"METHOD\">Methods</option>",
-      "<option value=\"FIELD\">Fields</option>",
-      "<option value=\"CONSTANT\">Constants</option>"
-    ].join("");
-    input.parentNode.insertBefore(kindFilter, panel);
-  }
 
   function esc(value) {
     return String(value || "").replace(/[&<>"]/g, function (char) {
@@ -51,10 +27,6 @@
 
   function normalizedQuery() {
     return input.value.trim().toLowerCase();
-  }
-
-  function matchesKind(item) {
-    return !kindFilter.value || String(item.kind || "") === kindFilter.value;
   }
 
   function currentPlatform() {
@@ -114,7 +86,7 @@
 
   function render(query) {
     query = query.trim().toLowerCase();
-    if (!query && !kindFilter.value) {
+    if (!query) {
       panel.classList.remove("open");
       panel.innerHTML = "";
       lastHits = [];
@@ -122,7 +94,7 @@
       return;
     }
     var hits = items.filter(function (item) {
-      return matchesKind(item) && matchesPlatform(item) && matchesLabel(item, query);
+      return matchesPlatform(item) && matchesLabel(item, query);
     }).slice(0, 30);
     lastHits = hits;
     activeIndex = -1;
@@ -143,7 +115,6 @@
     .catch(function () { items = []; });
 
   input.addEventListener("input", function () { render(input.value); });
-  kindFilter.addEventListener("change", function () { render(normalizedQuery()); });
   window.addEventListener("apidoc-platform-change", function () { render(normalizedQuery()); });
   function onSearchKeydown(event) {
     if (!panel.classList.contains("open") || !lastHits.length) return;
@@ -167,7 +138,7 @@
   input.addEventListener("keydown", onSearchKeydown);
   panel.addEventListener("keydown", onSearchKeydown);
   document.addEventListener("click", function (event) {
-    if (!panel.contains(event.target) && event.target !== input && event.target !== kindFilter) {
+    if (!panel.contains(event.target) && event.target !== input) {
       panel.classList.remove("open");
       input.setAttribute("aria-expanded", "false");
     }

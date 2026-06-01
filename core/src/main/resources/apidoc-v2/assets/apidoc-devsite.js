@@ -22,19 +22,26 @@
   }
 
   var bookToggle = document.querySelector(".ad-book-nav-toggle");
+  var restoreToggle = document.querySelector(".ad-book-nav-restore");
   var bookToggleLabel = bookToggle ? bookToggle.querySelector(".ad-book-nav-toggle-label") : null;
   function applyCollapsed(state) {
     document.body.classList.toggle("ad-nav-collapsed", state);
     if (bookToggle) bookToggle.setAttribute("aria-expanded", state ? "false" : "true");
-    if (bookToggleLabel) bookToggleLabel.textContent = state ? "Show navigation" : "Hide navigation";
+    if (restoreToggle) restoreToggle.setAttribute("aria-expanded", state ? "false" : "true");
+    if (bookToggleLabel) bookToggleLabel.textContent = "Hide navigation";
   }
+  var storedCollapsed = localStorage.getItem(navCollapsedStorageKey) === "true";
+  applyCollapsed(storedCollapsed);
   if (bookToggle) {
-    var storedCollapsed = localStorage.getItem(navCollapsedStorageKey) === "true";
-    applyCollapsed(storedCollapsed);
     bookToggle.addEventListener("click", function () {
-      var next = !document.body.classList.contains("ad-nav-collapsed");
-      applyCollapsed(next);
-      localStorage.setItem(navCollapsedStorageKey, next ? "true" : "false");
+      applyCollapsed(true);
+      localStorage.setItem(navCollapsedStorageKey, "true");
+    });
+  }
+  if (restoreToggle) {
+    restoreToggle.addEventListener("click", function () {
+      applyCollapsed(false);
+      localStorage.setItem(navCollapsedStorageKey, "false");
     });
   }
 

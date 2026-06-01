@@ -126,15 +126,15 @@ select:focus-visible {
 
 .ad-search-wrap {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
-  gap: 8px;
-  margin-left: auto;
-  width: min(620px, 52vw);
+  display: block;
+  width: 100%;
 }
 
-.ad-search,
-.ad-search-kind {
+.ad-nav-search-wrap {
+  margin: 0 0 12px;
+}
+
+.ad-search {
   height: 36px;
   border: 1px solid var(--ad-border);
   border-radius: var(--ad-radius-sm);
@@ -149,30 +149,23 @@ select:focus-visible {
   padding: 0 12px;
 }
 
-.ad-search-kind {
-  min-width: 86px;
-  max-width: 132px;
-  padding: 0 8px;
-}
-
-.ad-search:hover,
-.ad-search-kind:hover {
+.ad-search:hover {
   border-color: var(--ad-border-strong);
   background: var(--ad-surface);
 }
 
-.ad-search:focus,
-.ad-search-kind:focus {
+.ad-search:focus {
   border-color: var(--ad-primary);
   background: var(--ad-surface);
 }
 
 .ad-search-results {
   position: absolute;
+  left: 0;
   right: 0;
   top: 44px;
-  z-index: 40;
-  width: min(620px, calc(100vw - 40px));
+  z-index: 60;
+  width: min(420px, calc(100vw - 32px));
   max-height: min(560px, calc(100vh - 84px));
   overflow: auto;
   display: none;
@@ -331,7 +324,7 @@ select:focus-visible {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .ad-platform-badges {
@@ -373,11 +366,6 @@ a.is-platform-disabled {
   text-decoration: none;
 }
 
-.is-platform-disabled .ad-package-count {
-  background: #f1f3f4;
-  color: #9aa0a6;
-}
-
 .ad-devsite-book-nav { display: flex; flex-direction: column; padding: 0; }
 .ad-book-nav-scroll  { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 18px 14px 8px; }
 .ad-book-nav-footer  {
@@ -416,20 +404,45 @@ a.is-platform-disabled {
 .ad-book-nav-toggle-label { white-space: nowrap; }
 
 body.ad-nav-collapsed {
-  --ad-left-nav-width: 48px;
+  overflow-x: hidden;
 }
-body.ad-nav-collapsed .ad-book-nav-scroll {
-  display: none;
+body.ad-nav-collapsed .ad-devsite-book-nav {
+  transform: translateX(calc(-1 * var(--ad-left-nav-width)));
+  visibility: hidden;
+  pointer-events: none;
 }
+body.ad-nav-collapsed .ad-book-nav-restore {
+  display: inline-flex;
+}
+body.ad-nav-collapsed .ad-book-nav-scroll,
 body.ad-nav-collapsed .ad-book-nav-footer {
-  padding: 8px 6px;
-  justify-content: center;
+  visibility: hidden;
+  pointer-events: none;
 }
 body.ad-nav-collapsed .ad-book-nav-toggle-label {
   display: none;
 }
 body.ad-nav-collapsed .ad-book-nav-toggle-icon {
   transform: rotate(180deg);
+}
+
+.ad-book-nav-restore {
+  position: fixed;
+  left: 12px;
+  top: calc(var(--ad-header-height) + 12px);
+  z-index: 70;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  border: 1px solid var(--ad-border);
+  border-radius: var(--ad-radius-sm);
+  background: var(--ad-surface);
+  color: var(--ad-text);
+  padding: 0 10px;
+  box-shadow: var(--ad-shadow-popout);
+  font: 500 12px/1 var(--ad-font-sans);
+  cursor: pointer;
 }
 
 .is-current {
@@ -779,13 +792,7 @@ code {
 
   .ad-search-wrap {
     order: 2;
-    grid-template-columns: minmax(0, 1fr);
     width: 100%;
-    margin-left: 0;
-  }
-
-  .ad-search-kind {
-    display: none;
   }
 
   .ad-search-results {
@@ -889,7 +896,6 @@ code {
 .ad-nav-icon,
 .ad-kind-icon,
 .ad-index-icon,
-.ad-package-link img,
 .ad-package-disclosure img,
 .ad-copy-code img {
   display: block;
@@ -921,7 +927,7 @@ code {
 
 .ad-book-package {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 24px auto;
+  grid-template-columns: 16px minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
@@ -951,7 +957,7 @@ code {
 .ad-package-group > summary {
   list-style: none;
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: 16px minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   padding: 5px 8px 5px 22px;
@@ -959,7 +965,7 @@ code {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: none;
   cursor: pointer;
   border-radius: var(--ad-radius-sm);
 }
@@ -980,29 +986,6 @@ code {
   white-space: nowrap;
 }
 
-.ad-package-link {
-  display: inline-grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  border-radius: var(--ad-radius-sm);
-}
-
-.ad-package-link:hover {
-  background: var(--ad-primary-soft);
-}
-
-.ad-package-count {
-  min-width: 22px;
-  border-radius: 999px;
-  background: #eef2f7;
-  color: var(--ad-muted);
-  padding: 1px 7px;
-  font-size: 11px;
-  font-weight: 700;
-  text-align: center;
-}
-
 .ad-book-type,
 .ad-book-overview {
   display: grid;
@@ -1021,6 +1004,7 @@ code {
 }
 
 .ad-book-overview {
+  grid-template-columns: minmax(0, 1fr);
   margin: 4px 0 6px;
   padding-left: 24px;
 }
@@ -1053,6 +1037,73 @@ code {
   width: 20px;
   height: 20px;
   margin-top: 1px;
+}
+
+.ad-index-header {
+  margin-bottom: 18px;
+}
+
+.ad-index-intro {
+  max-width: 760px;
+  color: var(--ad-muted);
+}
+
+.ad-alpha-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 18px 0 24px;
+}
+
+.ad-alpha-index a {
+  min-width: 28px;
+  border: 1px solid var(--ad-border);
+  border-radius: var(--ad-radius-sm);
+  color: var(--ad-primary);
+  padding: 4px 8px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.ad-alpha-index a:hover,
+.ad-alpha-index a:focus {
+  background: var(--ad-primary-soft);
+  text-decoration: none;
+}
+
+.ad-index-letter-section {
+  margin: 24px 0 30px;
+}
+
+.ad-index-table {
+  width: 100%;
+  border: 1px solid var(--ad-border);
+  border-radius: var(--ad-radius-md);
+  border-spacing: 0;
+  border-collapse: separate;
+  overflow: hidden;
+  background: var(--ad-surface);
+}
+
+.ad-index-table th,
+.ad-index-table td {
+  border-top: 1px solid var(--ad-border);
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ad-index-table thead th {
+  border-top: 0;
+  background: var(--ad-surface-alt);
+  color: var(--ad-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ad-index-table td:first-child {
+  width: 32%;
+  font-weight: 650;
 }
 
 .ad-breadcrumbs {
@@ -1320,13 +1371,11 @@ code {
   backdrop-filter: blur(12px);
 }
 
-.ad-search,
-.ad-search-kind {
+.ad-search {
   transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
 }
 
-.ad-search:focus,
-.ad-search-kind:focus {
+.ad-search:focus {
   box-shadow: 0 0 0 3px rgba(26, 115, 232, .12);
 }
 

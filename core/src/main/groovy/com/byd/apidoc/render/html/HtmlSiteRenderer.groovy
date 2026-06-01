@@ -40,10 +40,12 @@ class HtmlSiteRenderer {
         File root = new File(context.outputDir, OUTPUT_DIR)
         root.mkdirs()
         write(new File(root, "index.html"), shellRenderer.render(context, "API Reference", index(context), "", "index.html"))
-        write(new File(root, "packages.html"), shellRenderer.render(context, "Packages", packages(context), "", "packages.html"))
-        write(new File(root, "classes.html"), shellRenderer.render(context, "Classes", classes(context), "", "classes.html"))
+        write(new File(root, "packages.html"), shellRenderer.render(context, "Packages Index", packages(context), "", "packages.html", packagesIndexToc()))
+        write(new File(root, "classes.html"), shellRenderer.render(context, "Classes Index", classes(context), "", "classes.html", classesIndexToc(context)))
         context.projection.pages.findAll { it.kind == PageKind.PACKAGE }.each { PageModel page ->
-            write(new File(root, page.url), shellRenderer.render(context, page.title, packagePage(context, page), rootPrefix(page.url), page.url))
+            PackagePageModel packageModel = context.projection.packagePages.find { it.packageName == page.title }
+            List<PackageTypeGroupModel> groups = packageModel?.typeGroups ?: []
+            write(new File(root, page.url), shellRenderer.render(context, page.title, packagePage(context, page, packageModel, groups), rootPrefix(page.url), page.url, packageToc(groups)))
         }
         context.projection.typePages.each { TypePageModel page ->
             PageModel pageModel = context.projection.pages.find { it.targetId?.stableKey() == page.id?.stableKey() }
@@ -59,62 +61,108 @@ class HtmlSiteRenderer {
         return """      <article class="ad-api-index">
         <h1>API Reference</h1>
         <ul>
-          <li><a href="packages.html">Packages</a></li>
-          <li><a href="classes.html">Classes</a></li>
+          <li><a href="packages.html">Packages Index</a></li>
+          <li><a href="classes.html">Classes Index</a></li>
         </ul>
       </article>
 """
     }
 
     private static String packages(RenderContext context) {
-        String items = context.projection.pages.findAll { it.kind == PageKind.PACKAGE }.sort { it.title }.collect { PageModel page ->
-            """          <li class="ad-index-row"${platformData(page.platforms)}><img class="ad-index-icon" src="assets/icon/package.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(page.url)}">${escape(page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
+        String rows = context.projection.pages.findAll { it.kind == PageKind.PACKAGE }.sort { it.title }.collect { PageModel page ->
+            String description = page.summary ?: "Package ${page.title} contains related API types for this SDK reference."
+            """            <tr${platformData(page.platforms)}>
+              <td><a href="${escapeAttr(page.url)}">${escape(page.title)}</a></td>
+              <td>${escape(description)}</td>
+            </tr>"""
         }.join("\n")
         return """      <article class="ad-api-index">
-        <h1>Packages</h1>
-        <ul>
-${items}
-        </ul>
+        <header class="ad-index-header" id="packages-index">
+          <h1>Packages Index</h1>
+          <p class="ad-index-intro">Browse all API packages in this reference.</p>
+        </header>
+        <section id="packages-list">
+          <h2>Package list</h2>
+          <table class="ad-index-table ad-packages-index-table">
+            <thead>
+              <tr><th>Package</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+${rows}
+            </tbody>
+          </table>
+        </section>
       </article>
 """
     }
 
     private static String classes(RenderContext context) {
-        String items = context.projection.typePages.sort { it.id?.qualifiedName ?: it.title }.collect { TypePageModel page ->
-            PageModel pageModel = context.projection.pages.find { it.targetId?.stableKey() == page.id?.stableKey() }
-            String url = pageModel?.url ?: "reference/${page.id?.qualifiedName}.html"
-            """          <li class="ad-index-row"${platformData(page.platforms)}><img class="ad-index-icon" src="assets/icon/${typeIcon(page)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(page.id?.qualifiedName ?: page.title)}</a>${page.summary ? "<p>${escape(page.summary)}</p>" : ""}</div></li>"""
+        List<TypePageModel> pages = (context.projection.typePages ?: []).sort { TypePageModel page ->
+            simpleTypeName(page).toLowerCase(Locale.ROOT)
+        }
+        Map<String, List<TypePageModel>> pagesByLetter = pages.groupBy { TypePageModel page -> indexLetter(simpleTypeName(page)) }
+        List<String> letters = pagesByLetter.keySet().toList().sort()
+        String alphaIndex = letters.collect { String letter ->
+            "          <a href=\"#class-${escapeAttr(letter)}\">${escape(letter)}</a>"
+        }.join("\n")
+        String sections = letters.collect { String letter ->
+            String rows = pagesByLetter[letter].collect { TypePageModel page ->
+                PageModel pageModel = context.projection.pages.find { it.targetId?.stableKey() == page.id?.stableKey() }
+                String url = pageModel?.url ?: "reference/${page.id?.qualifiedName}.html"
+                String name = simpleTypeName(page)
+                String description = page.summary ?: ""
+                """              <tr${platformData(page.platforms)}>
+                <td><a href="${escapeAttr(url)}">${escape(name)}</a></td>
+                <td>${escape(description)}</td>
+              </tr>"""
+            }.join("\n")
+            """        <section class="ad-index-letter-section" id="class-${escapeAttr(letter)}">
+          <h2>${escape(letter)}</h2>
+          <table class="ad-index-table ad-classes-index-table">
+            <thead>
+              <tr><th>Class</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+${rows}
+            </tbody>
+          </table>
+        </section>"""
         }.join("\n")
         return """      <article class="ad-api-index">
-        <h1>Classes</h1>
-        <ul>
-${items}
-        </ul>
+        <header class="ad-index-header" id="classes-index">
+          <h1>Classes Index</h1>
+        </header>
+        <nav class="ad-alpha-index" aria-label="Class index letters">
+${alphaIndex}
+        </nav>
+${sections}
       </article>
 """
     }
 
-    private String packagePage(RenderContext context, PageModel page) {
-        PackagePageModel packagePage = context.projection.packagePages.find { it.packageName == page.title }
-        List<PackageTypeGroupModel> groups = packagePage?.typeGroups ?: []
+    private String packagePage(RenderContext context, PageModel page, PackagePageModel packagePage, List<PackageTypeGroupModel> groups) {
         String items = groups.collect { PackageTypeGroupModel group ->
             String rows = group.types.collect { TypePageModel type ->
                 PageModel model = context.projection.pages.find { it.targetId?.stableKey() == type.id?.stableKey() }
                 String url = relativeUrl(page.url, model?.url ?: "reference/${type.id?.qualifiedName}.html")
                 """            <li class="ad-index-row"${platformData(type.platforms)}><img class="ad-index-icon" src="${rootPrefix(page.url)}assets/icon/${typeIconForGroup(group.kind)}.svg" alt="" aria-hidden="true"><div><a href="${escapeAttr(url)}">${escape(type.title)}</a>${platformBadges(type.platforms)}${type.summary ? "<p>${escape(type.summary)}</p>" : ""}</div></li>"""
             }.join("\n")
-            """        <section class="ad-package-type-group ad-package-group"${platformData(group.platforms)}>
-          <h2>${escape(group.label)}</h2>
+            String label = titleCaseLabel(group.label)
+            """        <section class="ad-package-type-group ad-package-group" id="${escapeAttr(anchorName(label))}"${platformData(group.platforms)}>
+          <h2>${escape(label)}</h2>
           <ul>
 ${rows}
           </ul>
         </section>"""
         }.join("\n")
+        String overview = page.summary ?: "Package ${page.title} contains related API types for this SDK reference."
         return """      <article class="ad-api-index">
-        <h1>Package ${escape(page.title)}</h1>
-        <p class="ad-package-overview-label">Overview</p>
-        ${platformBadges(page.platforms)}
-        ${page.summary ? "<p>${escape(page.summary)}</p>" : ""}
+        <header class="ad-api-header" id="overview">
+          <h1>Package ${escape(page.title)}</h1>
+          <p class="ad-package-overview-label">Overview</p>
+          ${platformBadges(page.platforms)}
+          <p>${escape(overview)}</p>
+        </header>
 ${items}
       </article>
 """
@@ -302,6 +350,41 @@ ${items}
     </nav>"""
     }
 
+    private static String packagesIndexToc() {
+        return """<nav class="ad-devsite-toc" aria-label="On this page">
+      <div class="ad-toc-title">On this page</div>
+      <a class="ad-toc-level-2" href="#packages-index">Packages Index</a>
+      <a class="ad-toc-level-2" href="#packages-list">Package list</a>
+    </nav>"""
+    }
+
+    private static String classesIndexToc(RenderContext context) {
+        List<String> letters = (context.projection.typePages ?: [])
+                .collect { TypePageModel page -> indexLetter(simpleTypeName(page)) }
+                .unique()
+                .sort()
+        String items = letters.collect { String letter ->
+            "      <a class=\"ad-toc-level-2\" href=\"#class-${escapeAttr(letter)}\">${escape(letter)}</a>"
+        }.join("\n")
+        return """<nav class="ad-devsite-toc" aria-label="On this page">
+      <div class="ad-toc-title">On this page</div>
+      <a class="ad-toc-level-2" href="#classes-index">Classes Index</a>
+${items}
+    </nav>"""
+    }
+
+    private static String packageToc(List<PackageTypeGroupModel> groups) {
+        String items = (groups ?: []).collect { PackageTypeGroupModel group ->
+            String label = titleCaseLabel(group.label)
+            "      <a class=\"ad-toc-level-2\" href=\"#${escapeAttr(anchorName(label))}\">${escape(label)}</a>"
+        }.join("\n")
+        return """<nav class="ad-devsite-toc" aria-label="On this page">
+      <div class="ad-toc-title">On this page</div>
+      <a class="ad-toc-level-2" href="#overview">Overview</a>
+${items}
+    </nav>"""
+    }
+
     private static String typeIcon(TypePageModel page) {
         switch (page?.typeKind) {
             case DocTypeKind.INTERFACE:
@@ -329,6 +412,27 @@ ${items}
         if (key.contains("exception")) return "exception"
         if (key.contains("error")) return "exception"
         return "class"
+    }
+
+    private static String simpleTypeName(TypePageModel page) {
+        String name = page?.title ?: page?.id?.qualifiedName ?: ""
+        if (name.contains(".")) {
+            return name.substring(name.lastIndexOf(".") + 1)
+        }
+        return name
+    }
+
+    private static String indexLetter(String name) {
+        if (!name) return "#"
+        String first = name.substring(0, 1).toUpperCase(Locale.ROOT)
+        return first ==~ /[A-Z]/ ? first : "#"
+    }
+
+    private static String titleCaseLabel(String label) {
+        String text = (label ?: "").trim()
+        if (!text) return ""
+        String lower = text.toLowerCase(Locale.ROOT)
+        return lower.substring(0, 1).toUpperCase(Locale.ROOT) + lower.substring(1)
     }
 
     private static String sectionIcon(String title) {
