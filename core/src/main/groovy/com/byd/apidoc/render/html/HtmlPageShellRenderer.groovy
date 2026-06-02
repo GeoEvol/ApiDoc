@@ -20,19 +20,19 @@ class HtmlPageShellRenderer {
     <button class="ad-devsite-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="false"><img src="${prefix}assets/icon/menu.svg" alt="" aria-hidden="true">Menu</button>
     <a class="ad-brand" href="${prefix}index.html">${escape(context.projectName ?: 'API Reference')}</a>
   </header>
-  <button class="ad-book-nav-restore" type="button" aria-controls="ad-book-nav" aria-expanded="false">
+  <button class="ad-book-nav-restore-handle" type="button" aria-controls="ad-book-nav" aria-expanded="false" aria-label="Show navigation">
     <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron-double.svg" alt="" aria-hidden="true">
-    <span>Show navigation</span>
   </button>
   <div class="ad-devsite-shell">
     <nav class="ad-devsite-book-nav" id="ad-book-nav" aria-label="API navigation">
+      <div class="ad-reference-title">API REFERENCE</div>
       <div class="ad-book-nav-scroll">
         ${searchBox()}
         ${platformSelector(context)}
 ${bookNav(context, prefix, currentUrl)}
       </div>
       <div class="ad-book-nav-footer">
-        <button class="ad-book-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="true">
+        <button class="ad-book-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="true" aria-label="Hide navigation">
           <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron-double.svg" alt="" aria-hidden="true">
           <span class="ad-book-nav-toggle-label">Hide navigation</span>
         </button>

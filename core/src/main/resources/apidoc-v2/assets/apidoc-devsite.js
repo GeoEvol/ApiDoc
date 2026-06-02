@@ -22,13 +22,17 @@
   }
 
   var bookToggle = document.querySelector(".ad-book-nav-toggle");
-  var restoreToggle = document.querySelector(".ad-book-nav-restore");
+  var restoreHandle = document.querySelector(".ad-book-nav-restore-handle");
   var bookToggleLabel = bookToggle ? bookToggle.querySelector(".ad-book-nav-toggle-label") : null;
   function applyCollapsed(state) {
     document.body.classList.toggle("ad-nav-collapsed", state);
-    if (bookToggle) bookToggle.setAttribute("aria-expanded", state ? "false" : "true");
-    if (restoreToggle) restoreToggle.setAttribute("aria-expanded", state ? "false" : "true");
-    if (bookToggleLabel) bookToggleLabel.textContent = "Hide navigation";
+    var label = state ? "Show navigation" : "Hide navigation";
+    if (bookToggle) {
+      bookToggle.setAttribute("aria-expanded", state ? "false" : "true");
+      bookToggle.setAttribute("aria-label", label);
+    }
+    if (restoreHandle) restoreHandle.setAttribute("aria-expanded", state ? "false" : "true");
+    if (bookToggleLabel) bookToggleLabel.textContent = label;
   }
   var storedCollapsed = localStorage.getItem(navCollapsedStorageKey) === "true";
   applyCollapsed(storedCollapsed);
@@ -38,8 +42,8 @@
       localStorage.setItem(navCollapsedStorageKey, "true");
     });
   }
-  if (restoreToggle) {
-    restoreToggle.addEventListener("click", function () {
+  if (restoreHandle) {
+    restoreHandle.addEventListener("click", function () {
       applyCollapsed(false);
       localStorage.setItem(navCollapsedStorageKey, "false");
     });

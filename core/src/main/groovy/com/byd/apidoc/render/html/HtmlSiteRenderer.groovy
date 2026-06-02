@@ -34,6 +34,7 @@ class HtmlSiteRenderer {
     private final HtmlAssetWriter assetWriter = new HtmlAssetWriter()
     private final HtmlPageShellRenderer shellRenderer = new HtmlPageShellRenderer()
     private final LinkPathResolver pathResolver = new LinkPathResolver()
+    private final HtmlSearchIndexViewBuilder htmlSearchIndexViewBuilder = new HtmlSearchIndexViewBuilder()
 
     void render(RenderContext context) {
         currentProjection = context.projection
@@ -54,7 +55,7 @@ class HtmlSiteRenderer {
         }
         assetWriter.write(root)
         jsonWriter.write(context.projection.nav, new File(root, "nav-index.json"))
-        jsonWriter.write(context.projection.search, new File(root, "search-index.json"))
+        jsonWriter.write(htmlSearchIndexViewBuilder.build(context.projection.search), new File(root, "search-index.json"))
     }
 
     private static String index(RenderContext context) {

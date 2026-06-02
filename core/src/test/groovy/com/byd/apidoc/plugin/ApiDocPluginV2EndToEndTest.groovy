@@ -155,6 +155,20 @@ class ApiDocPluginV2EndToEndTest {
         def rootSearch = new JsonSlurper().parse(new File(outputDir, "search-index.json"))
         def htmlSearch = new JsonSlurper().parse(new File(htmlRoot, "search-index.json"))
         assertEquals(rootSearch*.url, htmlSearch*.url)
+        List<String> htmlDerivedFields = ["simpleName", "ownerSimpleName", "ownerQualifiedName", "displayTitle", "searchText"]
+        assertTrue(rootSearch.every { Map item -> htmlDerivedFields.every { String field -> !item.containsKey(field) } })
+        assertTrue(htmlSearch.every { Map item -> htmlDerivedFields.every { String field -> item.containsKey(field) } })
+        assertTrue(htmlSearch.every { Map item -> item.containsKey("metadata") })
+
+        def htmlFoo = htmlSearch.find { it.qualifiedName == "com.example.sdk.Foo" }
+        assertNotNull(htmlFoo)
+        assertEquals("Foo", htmlFoo.simpleName)
+        assertEquals("Foo", htmlFoo.displayTitle)
+
+        def htmlRun = htmlSearch.find { it.ownerQualifiedName == "com.example.sdk.Foo" && it.label == "run" }
+        assertNotNull(htmlRun)
+        assertEquals("Foo", htmlRun.ownerSimpleName)
+        assertTrue(htmlRun.searchText.contains("Runs the sample operation") || htmlRun.searchText.contains("Runs a varargs overload"))
 
         String indexHtml = new File(htmlRoot, "index.html").text
         assertTrue(indexHtml.contains("class=\"ad-devsite-topbar\""))
