@@ -55,15 +55,18 @@ class ApiDocSearchAssetTest {
     }
 
     @Test
-    void searchAssetKeepsResultsSimpleWithoutHighlightSnippetOrGrouping() {
+    void searchAssetHighlightsVisibleMatchesAndEmitsNavigationQueries() {
         String script = getClass().classLoader.getResource("apidoc-v2/assets/apidoc-search.js").text
 
-        assertFalse(script.contains("function matchRanges(value, query)"))
-        assertFalse(script.contains("function renderHighlightedText(value, query)"))
-        assertFalse(script.contains("function snippetFor(item, query)"))
-        assertFalse(script.contains("function renderSnippet(item, query)"))
-        assertFalse(script.contains("ad-search-highlight"))
-        assertFalse(script.contains("ad-search-snippet"))
+        assertTrue(script.contains("function matchRanges(value, query)"))
+        assertTrue(script.contains("function renderHighlightedText(value, query)"))
+        assertTrue(script.contains("function snippetFor(item, query)"))
+        assertTrue(script.contains("function renderSnippet(item, query, title, subtitle)"))
+        assertTrue(script.contains("ad-search-highlight"))
+        assertTrue(script.contains("ad-search-snippet"))
+        assertTrue(script.contains("apidoc-search-query-change"))
+        assertTrue(script.contains("new CustomEvent"))
+        assertTrue(script.contains("esc(text.substring"))
         assertFalse(script.contains("Best match"))
         assertFalse(script.contains("Fields & Constants"))
     }

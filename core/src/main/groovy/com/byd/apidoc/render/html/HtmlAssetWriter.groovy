@@ -1,5 +1,6 @@
 package com.byd.apidoc.render.html
 
+import java.nio.file.Files
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 
@@ -9,6 +10,7 @@ class HtmlAssetWriter {
     void write(File root) {
         File assets = new File(root, "assets")
         assets.mkdirs()
+        Files.deleteIfExists(new File(assets, "icon/chevron-double.svg").toPath())
         copyResource("apidoc-devsite.css", new File(assets, "apidoc-devsite.css"))
         copyResource("apidoc-devsite.js", new File(assets, "apidoc-devsite.js"))
 

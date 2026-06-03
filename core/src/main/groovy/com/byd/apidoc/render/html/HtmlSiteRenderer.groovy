@@ -40,9 +40,9 @@ class HtmlSiteRenderer {
         currentProjection = context.projection
         File root = new File(context.outputDir, OUTPUT_DIR)
         root.mkdirs()
-        write(new File(root, "index.html"), shellRenderer.render(context, "API Reference", index(context), "", "index.html"))
-        write(new File(root, "packages.html"), shellRenderer.render(context, "Packages Index", packages(context), "", "packages.html", packagesIndexToc()))
-        write(new File(root, "classes.html"), shellRenderer.render(context, "Classes Index", classes(context), "", "classes.html", classesIndexToc(context)))
+        write(new File(root, "index.html"), shellRenderer.render(context, "Package Index", packages(context), "", "index.html", packagesIndexToc()))
+        write(new File(root, "packages.html"), shellRenderer.render(context, "Package Index", packages(context), "", "packages.html", packagesIndexToc()))
+        write(new File(root, "classes.html"), shellRenderer.render(context, "Class Index", classes(context), "", "classes.html", classesIndexToc(context)))
         context.projection.pages.findAll { it.kind == PageKind.PACKAGE }.each { PageModel page ->
             PackagePageModel packageModel = context.projection.packagePages.find { it.packageName == page.title }
             List<PackageTypeGroupModel> groups = packageModel?.typeGroups ?: []
@@ -58,17 +58,6 @@ class HtmlSiteRenderer {
         jsonWriter.write(htmlSearchIndexViewBuilder.build(context.projection.search), new File(root, "search-index.json"))
     }
 
-    private static String index(RenderContext context) {
-        return """      <article class="ad-api-index">
-        <h1>API Reference</h1>
-        <ul>
-          <li><a href="packages.html">Packages Index</a></li>
-          <li><a href="classes.html">Classes Index</a></li>
-        </ul>
-      </article>
-"""
-    }
-
     private static String packages(RenderContext context) {
         String rows = context.projection.pages.findAll { it.kind == PageKind.PACKAGE }.sort { it.title }.collect { PageModel page ->
             String description = page.summary ?: "Package ${page.title} contains related API types for this SDK reference."
@@ -79,7 +68,7 @@ class HtmlSiteRenderer {
         }.join("\n")
         return """      <article class="ad-api-index">
         <header class="ad-index-header" id="packages-index">
-          <h1>Packages Index</h1>
+          <h1>Package Index</h1>
           <p class="ad-index-intro">Browse all API packages in this reference.</p>
         </header>
         <section id="packages-list">
@@ -131,7 +120,7 @@ ${rows}
         }.join("\n")
         return """      <article class="ad-api-index">
         <header class="ad-index-header" id="classes-index">
-          <h1>Classes Index</h1>
+          <h1>Class Index</h1>
         </header>
         <nav class="ad-alpha-index" aria-label="Class index letters">
 ${alphaIndex}
@@ -354,7 +343,7 @@ ${items}
     private static String packagesIndexToc() {
         return """<nav class="ad-devsite-toc" aria-label="On this page">
       <div class="ad-toc-title">On this page</div>
-      <a class="ad-toc-level-2" href="#packages-index">Packages Index</a>
+      <a class="ad-toc-level-2" href="#packages-index">Package Index</a>
       <a class="ad-toc-level-2" href="#packages-list">Package list</a>
     </nav>"""
     }
@@ -369,7 +358,7 @@ ${items}
         }.join("\n")
         return """<nav class="ad-devsite-toc" aria-label="On this page">
       <div class="ad-toc-title">On this page</div>
-      <a class="ad-toc-level-2" href="#classes-index">Classes Index</a>
+      <a class="ad-toc-level-2" href="#classes-index">Class Index</a>
 ${items}
     </nav>"""
     }
