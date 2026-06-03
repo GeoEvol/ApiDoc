@@ -4,9 +4,11 @@
 
   var toggle = document.querySelector(".ad-devsite-nav-toggle");
   var nav = document.getElementById("ad-book-nav");
+  var packagesRoot = document.getElementById("ad-packages-root");
   var platformSelect = document.getElementById("ad-platform-select");
   var platformStorageKey = "apidoc.platform";
-  var navCollapsedStorageKey = "apidoc.navCollapsed";
+  var packagesExpandedStorageKey = "apidoc.packagesExpanded";
+  var currentSearchQuery = "";
   if (toggle && nav) {
     toggle.addEventListener("click", function () {
       var open = document.body.classList.toggle("ad-nav-open");
@@ -22,30 +24,35 @@
   }
 
   var bookToggle = document.querySelector(".ad-book-nav-toggle");
-  var restoreHandle = document.querySelector(".ad-book-nav-restore-handle");
-  var bookToggleLabel = bookToggle ? bookToggle.querySelector(".ad-book-nav-toggle-label") : null;
   function applyCollapsed(state) {
     document.body.classList.toggle("ad-nav-collapsed", state);
     var label = state ? "Show navigation" : "Hide navigation";
     if (bookToggle) {
       bookToggle.setAttribute("aria-expanded", state ? "false" : "true");
       bookToggle.setAttribute("aria-label", label);
+      bookToggle.setAttribute("data-title", label);
     }
-    if (restoreHandle) restoreHandle.setAttribute("aria-expanded", state ? "false" : "true");
-    if (bookToggleLabel) bookToggleLabel.textContent = label;
   }
-  var storedCollapsed = localStorage.getItem(navCollapsedStorageKey) === "true";
-  applyCollapsed(storedCollapsed);
-  if (bookToggle) {
-    bookToggle.addEventListener("click", function () {
-      applyCollapsed(true);
-      localStorage.setItem(navCollapsedStorageKey, "true");
+
+  function toggleBookNav() {
+    var scrollable = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    var ratio = scrollable > 0 ? document.documentElement.scrollTop / scrollable : 0;
+    applyCollapsed(!document.body.classList.contains("ad-nav-collapsed"));
+    window.requestAnimationFrame(function () {
+      var nextScrollable = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      document.documentElement.scrollTop = Math.round(ratio * Math.max(0, nextScrollable));
     });
   }
-  if (restoreHandle) {
-    restoreHandle.addEventListener("click", function () {
-      applyCollapsed(false);
-      localStorage.setItem(navCollapsedStorageKey, "false");
+
+  applyCollapsed(false);
+  if (bookToggle) {
+    bookToggle.addEventListener("click", toggleBookNav);
+  }
+
+  if (packagesRoot) {
+    packagesRoot.open = localStorage.getItem(packagesExpandedStorageKey) === "true";
+    packagesRoot.addEventListener("toggle", function () {
+      localStorage.setItem(packagesExpandedStorageKey, packagesRoot.open ? "true" : "false");
     });
   }
 
@@ -124,6 +131,100 @@
     });
   }
 
+  function matchesNavQuery(el, query) {
+    if (!el || !query) return false;
+    var text = el.getAttribute("data-filter-text") || el.textContent || "";
+    return text.toLowerCase().indexOf(query) !== -1;
+  }
+
+  function renderNavLabel(label, query) {
+    var text = label.getAttribute("data-nav-label") || label.textContent || "";
+    label.textContent = "";
+    if (!query) {
+      label.appendChild(document.createTextNode(text));
+      return;
+    }
+    var lower = text.toLowerCase();
+    var from = 0;
+    var index = lower.indexOf(query, from);
+    while (index !== -1) {
+      if (index > from) label.appendChild(document.createTextNode(text.substring(from, index)));
+      var mark = document.createElement("mark");
+      mark.className = "ad-search-highlight";
+      mark.textContent = text.substring(index, index + query.length);
+      label.appendChild(mark);
+      from = index + query.length;
+      index = lower.indexOf(query, from);
+    }
+    if (from < text.length) label.appendChild(document.createTextNode(text.substring(from)));
+  }
+
+  function highlightNavLabels(query) {
+    if (!nav) return;
+    Array.prototype.forEach.call(nav.querySelectorAll("[data-nav-label]"), function (label) {
+      renderNavLabel(label, query);
+    });
+  }
+
+  function applyNavSearch(query) {
+    currentSearchQuery = String(query || "").trim().toLowerCase();
+    if (!nav) return;
+
+    var filtering = !!currentSearchQuery;
+    var platform = currentPlatform();
+    var rootSummary = packagesRoot ? packagesRoot.querySelector(":scope > summary") : null;
+    var rootMatch = filtering && matchesNavQuery(rootSummary, currentSearchQuery);
+    var filterDescendants = filtering && !rootMatch;
+    highlightNavLabels(currentSearchQuery);
+
+    if (filtering && packagesRoot) {
+      packagesRoot.open = true;
+      localStorage.setItem(packagesExpandedStorageKey, "true");
+    }
+
+    Array.prototype.forEach.call(nav.querySelectorAll(".ad-book-index-link"), function (link) {
+      link.hidden = filterDescendants && !matchesNavQuery(link, currentSearchQuery);
+    });
+
+    Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
+      var packageSummary = pkg.querySelector(":scope > summary");
+      var packageSupported = hasSupportedTypeLink(pkg, platform, false);
+      var packageMatch = matchesNavQuery(packageSummary, currentSearchQuery);
+      var visibleDescendant = false;
+      var overview = pkg.querySelector(":scope > .ad-book-overview");
+
+      if (overview) {
+        var overviewVisible = supportsPlatform(overview, platform)
+          && (!filterDescendants || packageMatch || matchesNavQuery(overview, currentSearchQuery));
+        overview.hidden = filterDescendants && !overviewVisible;
+        visibleDescendant = visibleDescendant || overviewVisible;
+      }
+
+      Array.prototype.forEach.call(pkg.querySelectorAll(":scope > .ad-package-group"), function (group) {
+        var groupSummary = group.querySelector(":scope > summary");
+        var groupSupported = hasSupportedTypeLink(group, platform, true);
+        var groupMatch = packageMatch || matchesNavQuery(groupSummary, currentSearchQuery);
+        var visibleType = false;
+
+        Array.prototype.forEach.call(group.querySelectorAll(":scope > .ad-book-type"), function (link) {
+          var linkVisible = supportsPlatform(link, platform)
+            && (!filterDescendants || groupMatch || matchesNavQuery(link, currentSearchQuery));
+          link.hidden = filterDescendants && !linkVisible;
+          visibleType = visibleType || linkVisible;
+        });
+
+        var groupVisible = groupSupported && (!filterDescendants || groupMatch || visibleType);
+        group.hidden = filterDescendants && !groupVisible;
+        if (filtering && groupVisible) group.open = true;
+        visibleDescendant = visibleDescendant || groupVisible;
+      });
+
+      var packageVisible = packageSupported && (!filterDescendants || packageMatch || visibleDescendant);
+      pkg.hidden = filterDescendants && !packageVisible;
+      if (filtering && packageVisible) pkg.open = true;
+    });
+  }
+
   function applyNavPlatformState(platform) {
     if (!nav) return;
     Array.prototype.forEach.call(nav.querySelectorAll(".ad-package"), function (pkg) {
@@ -155,6 +256,7 @@
       setPlatformDisabled(el, !supportsPlatform(el, platform));
     });
     applyNavPlatformState(platform);
+    applyNavSearch(currentSearchQuery);
     window.dispatchEvent(new CustomEvent("apidoc-platform-change", { detail: { platform: platform } }));
   }
 
@@ -174,6 +276,10 @@
   });
 
   applyPlatformFilter();
+
+  window.addEventListener("apidoc-search-query-change", function (event) {
+    applyNavSearch(event.detail && event.detail.query || "");
+  });
 
   document.addEventListener("keydown", function (event) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {

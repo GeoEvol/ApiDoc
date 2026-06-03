@@ -39,6 +39,55 @@
     });
   }
 
+  function matchRanges(value, query) {
+    var text = String(value || "");
+    var needle = normalize(query);
+    if (!needle) return [];
+    var lower = text.toLowerCase();
+    var ranges = [];
+    var from = 0;
+    var index = lower.indexOf(needle, from);
+    while (index !== -1) {
+      ranges.push([index, index + needle.length]);
+      from = index + needle.length;
+      index = lower.indexOf(needle, from);
+    }
+    return ranges;
+  }
+
+  function renderHighlightedText(value, query) {
+    var text = String(value || "");
+    var ranges = matchRanges(text, query);
+    if (!ranges.length) return esc(text);
+    var html = "";
+    var from = 0;
+    ranges.forEach(function (range) {
+      html += esc(text.substring(from, range[0]));
+      html += "<mark class=\"ad-search-highlight\">" + esc(text.substring(range[0], range[1])) + "</mark>";
+      from = range[1];
+    });
+    return html + esc(text.substring(from));
+  }
+
+  function snippetFor(item, query) {
+    var candidates = [item.summary, item.qualifiedName, item.displaySignature, item.searchText];
+    for (var i = 0; i < candidates.length; i += 1) {
+      var text = String(candidates[i] || "").trim();
+      var index = text.toLowerCase().indexOf(normalize(query));
+      if (index < 0) continue;
+      var start = Math.max(0, index - 45);
+      var end = Math.min(text.length, index + String(query || "").length + 75);
+      return (start > 0 ? "\u2026" : "") + text.substring(start, end) + (end < text.length ? "\u2026" : "");
+    }
+    return "";
+  }
+
+  function renderSnippet(item, query, title, subtitle) {
+    if (matchRanges(title, query).length || matchRanges(subtitle, query).length) return "";
+    var snippet = snippetFor(item, query);
+    return snippet ? "<span class=\"ad-search-snippet\">" + renderHighlightedText(snippet, query) + "</span>" : "";
+  }
+
   function normalizedQuery() {
     return input.value.trim().toLowerCase();
   }
@@ -215,9 +264,11 @@
 
   function render(query) {
     query = query.trim().toLowerCase();
+    window.dispatchEvent(new CustomEvent("apidoc-search-query-change", { detail: { query: query } }));
     if (!query) {
       panel.classList.remove("open");
       panel.innerHTML = "";
+      input.setAttribute("aria-expanded", "false");
       lastHits = [];
       activeIndex = -1;
       return;
@@ -230,9 +281,11 @@
 
     panel.innerHTML = hits.length ? hits.map(function (item) {
       var title = item.displayTitle || item.simpleName || item.label || item.qualifiedName;
+      var subtitle = resultSubtitle(item);
       return "<a class=\"ad-search-result\" href=\"" + esc(targetUrl(item)) + "\">"
-        + "<strong>" + esc(title) + "</strong>"
-        + "<span>" + esc(resultSubtitle(item)) + "</span>"
+        + "<strong>" + renderHighlightedText(title, query) + "</strong>"
+        + "<span>" + renderHighlightedText(subtitle, query) + "</span>"
+        + renderSnippet(item, query, title, subtitle)
         + "</a>";
     }).join("") : "<div class=\"ad-search-result\"><strong>No results</strong></div>";
     panel.classList.add("open");
@@ -270,7 +323,10 @@
   window.__APIDOC_SEARCH_TESTING__ = {
     scoreItem: scoreItem,
     sortSearchResults: sortSearchResults,
-    matchesPlatform: matchesPlatform
+    matchesPlatform: matchesPlatform,
+    matchRanges: matchRanges,
+    renderHighlightedText: renderHighlightedText,
+    snippetFor: snippetFor
   };
   document.addEventListener("click", function (event) {
     if (!panel.contains(event.target) && event.target !== input) {

@@ -20,24 +20,17 @@ class HtmlPageShellRenderer {
     <button class="ad-devsite-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="false"><img src="${prefix}assets/icon/menu.svg" alt="" aria-hidden="true">Menu</button>
     <a class="ad-brand" href="${prefix}index.html">${escape(context.projectName ?: 'API Reference')}</a>
   </header>
-  <button class="ad-book-nav-restore-handle" type="button" aria-controls="ad-book-nav" aria-expanded="false" aria-label="Show navigation">
-    <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron-double.svg" alt="" aria-hidden="true">
-  </button>
   <div class="ad-devsite-shell">
     <nav class="ad-devsite-book-nav" id="ad-book-nav" aria-label="API navigation">
       <div class="ad-reference-title">API REFERENCE</div>
       <div class="ad-book-nav-scroll">
         ${searchBox()}
-        ${platformSelector(context)}
 ${bookNav(context, prefix, currentUrl)}
       </div>
-      <div class="ad-book-nav-footer">
-        <button class="ad-book-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="true" aria-label="Hide navigation">
-          <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron-double.svg" alt="" aria-hidden="true">
-          <span class="ad-book-nav-toggle-label">Hide navigation</span>
-        </button>
-      </div>
     </nav>
+    <button class="ad-book-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="true" aria-label="Hide navigation" data-title="Hide navigation">
+      <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron.svg" alt="" aria-hidden="true">
+    </button>
     <main class="ad-devsite-content" id="main-content">
 ${body}
     </main>
@@ -53,32 +46,40 @@ ${body}
 
     private static String bookNav(RenderContext context, String prefix, String currentUrl) {
         StringBuilder out = new StringBuilder()
-        out << "      <a class=\"ad-book-link${currentUrl == 'packages.html' ? ' is-current' : ''}\" href=\"${prefix}packages.html\">Packages Index</a>\n"
-        out << "      <a class=\"ad-book-link${currentUrl == 'classes.html' ? ' is-current' : ''}\" href=\"${prefix}classes.html\">Classes Index</a>\n"
+        boolean packageIndexCurrent = currentUrl == 'index.html' || currentUrl == 'packages.html'
+        out << "      <details class=\"ad-packages-root\" id=\"ad-packages-root\">\n"
+        out << "        <summary class=\"ad-packages-root-summary ad-nav-item\" data-filter-text=\"Packages\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-packages-root-label\" data-nav-label=\"Packages\">Packages</span></summary>\n"
+        out << "        <div class=\"ad-packages-root-content\">\n"
+        out << platformSelector(context)
+        out << "\n"
+        out << "          <a class=\"ad-book-link ad-book-index-link${currentUrl == 'classes.html' ? ' is-current' : ''}\" data-filter-text=\"Class Index\" href=\"${prefix}classes.html\"><span data-nav-label=\"Class Index\">Class Index</span></a>\n"
+        out << "          <a class=\"ad-book-link ad-book-index-link${packageIndexCurrent ? ' is-current' : ''}\" data-filter-text=\"Package Index\" href=\"${prefix}packages.html\"><span data-nav-label=\"Package Index\">Package Index</span></a>\n"
         (context.projection?.nav ?: []).each { NavNode node ->
             boolean packageOpen = isOnDescendantUrl(node, currentUrl)
-            out << "      <details class=\"ad-book-section ad-package\"${platformData(node.platforms)}${packageOpen ? ' open' : ''}>\n"
-            out << "        <summary class=\"ad-book-package ad-nav-item${currentUrl == node.url ? ' is-current' : ''}\"${platformData(node.platforms)}><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-package-name\">${escape(node.label)}</span></summary>\n"
+            out << "          <details class=\"ad-book-section ad-package\"${platformData(node.platforms)}${packageOpen ? ' open' : ''}>\n"
+            out << "            <summary class=\"ad-book-package ad-nav-item${currentUrl == node.url ? ' is-current' : ''}\"${platformData(node.platforms)} data-filter-text=\"${escapeAttr(node.label)}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-package-name\" data-nav-label=\"${escapeAttr(node.label)}\">${escape(node.label)}</span></summary>\n"
             node.children.each { NavNode group ->
                 if (group.kind == com.byd.apidoc.projection.NavNodeKind.OVERVIEW) {
                     String current = currentUrl == group.url ? " is-current" : ""
-                    out << "        <a class=\"ad-book-overview ad-nav-item${current}\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} Overview")}\" href=\"${prefix}${escapeAttr(group.url ?: '')}\"><span>${escape(group.label)}</span></a>\n"
+                    out << "            <a class=\"ad-book-overview ad-nav-item${current}\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} Overview")}\" href=\"${prefix}${escapeAttr(group.url ?: '')}\"><span data-nav-label=\"${escapeAttr(group.label)}\">${escape(group.label)}</span></a>\n"
                 } else {
                     boolean groupOpen = (group.children ?: []).any { NavNode child -> currentUrl == child.url }
                     String groupKind = kindKey(group.group ?: group.label)
                     String icon = iconForGroup(group.group ?: group.label)
                     String groupLabel = titleCaseGroupLabel(group.label ?: group.group?.toString())
-                    out << "        <details class=\"ad-package-group\" data-group-kind=\"${escapeAttr(groupKind)}\"${platformData(group.platforms)}${groupOpen ? ' open' : ''}>\n"
-                    out << "          <summary class=\"ad-book-group ad-nav-item\"${platformData(group.platforms)}><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-group-label\">${escape(groupLabel)}</span></summary>\n"
+                    out << "            <details class=\"ad-package-group\" data-group-kind=\"${escapeAttr(groupKind)}\"${platformData(group.platforms)}${groupOpen ? ' open' : ''}>\n"
+                    out << "              <summary class=\"ad-book-group ad-nav-item\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${groupLabel}")}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-group-label\" data-nav-label=\"${escapeAttr(groupLabel)}\">${escape(groupLabel)}</span></summary>\n"
                     group.children.each { NavNode child ->
                         String current = currentUrl == child.url ? " is-current" : ""
-                        out << "          <a class=\"ad-book-type ad-nav-item${current}\"${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><img class=\"ad-kind-icon\" src=\"${prefix}assets/icon/${icon}.svg\" alt=\"\" aria-hidden=\"true\"><span>${escape(child.label)}</span></a>\n"
+                        out << "              <a class=\"ad-book-type ad-nav-item${current}\"${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><img class=\"ad-kind-icon\" src=\"${prefix}assets/icon/${icon}.svg\" alt=\"\" aria-hidden=\"true\"><span data-nav-label=\"${escapeAttr(child.label)}\">${escape(child.label)}</span></a>\n"
                     }
-                    out << "        </details>\n"
+                    out << "            </details>\n"
                 }
             }
-            out << "      </details>\n"
+            out << "          </details>\n"
         }
+        out << "        </div>\n"
+        out << "      </details>\n"
         return out.toString()
     }
 
@@ -117,7 +118,7 @@ ${body}
             String label = platform == "all" ? "All Platforms" : platform
             "          <option value=\"${escapeAttr(platform)}\">${escape(label)}</option>"
         }.join("\n")
-        return """<div class="ad-platform-selector">
+        return """          <div class="ad-platform-selector">
         <label class="ad-platform-selector-label" for="ad-platform-select">Platform</label>
         <select id="ad-platform-select" class="ad-platform-selector-select" aria-label="Filter API by supported platform">
 ${options}
