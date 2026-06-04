@@ -232,7 +232,6 @@ select:focus-visible {
   grid-template-columns: var(--ad-left-nav-width) minmax(0, 1fr) var(--ad-right-toc-width);
   align-items: start;
   min-height: calc(100vh - var(--ad-header-height));
-  transition: grid-template-columns .2s cubic-bezier(.4, 0, .2, 1);
 }
 
 .ad-devsite-book-nav {
@@ -435,7 +434,6 @@ a.is-platform-disabled {
   }
 
   body.ad-nav-collapsed {
-    --ad-left-nav-width: 0px;
     overflow-x: hidden;
   }
 
