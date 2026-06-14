@@ -7,16 +7,16 @@ import java.util.jar.JarFile
 class HtmlAssetWriter {
     static final String ASSET_RESOURCE_ROOT = "apidoc-v2/assets"
 
-    void write(File root) {
+    void write(File root, String version = "") {
         File assets = new File(root, "assets")
         assets.mkdirs()
         Files.deleteIfExists(new File(assets, "icon/chevron-double.svg").toPath())
-        copyResource("apidoc-devsite.css", new File(assets, "apidoc-devsite.css"))
-        copyResource("apidoc-devsite.js", new File(assets, "apidoc-devsite.js"))
-
-        copyResource("apidoc-devsite.css", new File(assets, "apidoc.css"))
-        copyResource("apidoc-devsite.js", new File(assets, "apidoc.js"))
-        copyResource("apidoc-search.js", new File(assets, "search.js"))
+        String cssName    = version ? "apidoc-${version}.css"    : "apidoc.css"
+        String jsName     = version ? "apidoc-${version}.js"     : "apidoc.js"
+        String searchName = version ? "search-${version}.js"     : "search.js"
+        copyResource("apidoc-devsite.css", new File(assets, cssName))
+        copyResource("apidoc-devsite.js",  new File(assets, jsName))
+        copyResource("apidoc-search.js",   new File(assets, searchName))
         copyResourceDirectory("icon", new File(assets, "icon"))
     }
 

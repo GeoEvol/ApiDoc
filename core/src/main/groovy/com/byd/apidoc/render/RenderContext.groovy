@@ -8,4 +8,5 @@ class RenderContext {
     DocProjection projection
     File outputDir
     String projectName = "API Reference"
+    String assetVersion = ""
 }

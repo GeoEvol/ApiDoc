@@ -24,6 +24,7 @@
   }
 
   var bookToggle = document.querySelector(".ad-book-nav-toggle");
+  var contentEl = document.getElementById("main-content");
   function applyCollapsed(state) {
     document.body.classList.toggle("ad-nav-collapsed", state);
     var label = state ? "Show navigation" : "Hide navigation";
@@ -36,11 +37,11 @@
 
   function toggleBookNav() {
     var scrollable = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    var ratio = scrollable > 0 ? document.documentElement.scrollTop / scrollable : 0;
+    var ratio = scrollable > 0 ? window.scrollY / scrollable : 0;
     applyCollapsed(!document.body.classList.contains("ad-nav-collapsed"));
     window.requestAnimationFrame(function () {
       var nextScrollable = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      document.documentElement.scrollTop = Math.round(ratio * Math.max(0, nextScrollable));
+      window.scrollTo({ top: Math.round(ratio * Math.max(0, nextScrollable)), behavior: "instant" });
     });
   }
 
@@ -50,15 +51,22 @@
   }
 
   if (packagesRoot) {
-    packagesRoot.open = localStorage.getItem(packagesExpandedStorageKey) === "true";
+    packagesRoot.open = localStorage.getItem(packagesExpandedStorageKey) !== "false";
     packagesRoot.addEventListener("toggle", function () {
       localStorage.setItem(packagesExpandedStorageKey, packagesRoot.open ? "true" : "false");
     });
   }
 
-  var current = document.querySelector(".ad-devsite-book-nav a[href='" + location.pathname.split("/").pop() + "']");
+  var current = document.querySelector(".ad-devsite-book-nav a[href$='" + location.pathname.split("/").pop() + "']");
   if (current) {
     current.classList.add("is-current");
+    var parent = current.parentElement;
+    while (parent) {
+      if (parent.tagName === "DETAILS") {
+        parent.open = true;
+      }
+      parent = parent.parentElement;
+    }
   }
 
   document.addEventListener("click", function (event) {
@@ -67,8 +75,21 @@
     var anchor = button.getAttribute("data-anchor");
     if (!anchor) return;
     var value = location.href.replace(/#.*$/, "") + "#" + anchor;
+    var icon = button.querySelector("img");
+    var previous = icon ? icon.getAttribute("src") : "";
+    var checked = previous.replace(/link\.svg$/, "checked.svg");
+    function markCopied() {
+      button.classList.add("is-copied");
+      if (icon && checked !== previous) icon.setAttribute("src", checked);
+      window.setTimeout(function () {
+        button.classList.remove("is-copied");
+        if (icon && previous) icon.setAttribute("src", previous);
+      }, 1200);
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(value).catch(function () {});
+      navigator.clipboard.writeText(value).then(markCopied).catch(function () {});
+    } else {
+      markCopied();
     }
   });
 
@@ -137,18 +158,76 @@
     return text.toLowerCase().indexOf(query) !== -1;
   }
 
+  function appendWbr(parent) {
+    parent.appendChild(document.createElement("wbr"));
+  }
+
+  function appendSegmentWithPeriodicBreaks(parent, text) {
+    var value = String(text || "");
+    if (!value) return;
+    var interval = 12;
+    for (var i = 0; i < value.length; i += interval) {
+      if (i > 0) appendWbr(parent);
+      parent.appendChild(document.createTextNode(value.substring(i, i + interval)));
+    }
+  }
+
+  function appendBreaksAfter(parent, text, delimiter) {
+    var value = String(text || "");
+    var from = 0;
+    for (var i = 0; i < value.length; i++) {
+      if (value.charAt(i) === delimiter) {
+        appendSegmentWithPeriodicBreaks(parent, value.substring(from, i + 1));
+        appendWbr(parent);
+        from = i + 1;
+      }
+    }
+    appendSegmentWithPeriodicBreaks(parent, value.substring(from));
+  }
+
+  function appendCamelBreaks(parent, text) {
+    var value = String(text || "");
+    var from = 0;
+    for (var i = 1; i < value.length; i++) {
+      if (/[A-Z]/.test(value.charAt(i))) {
+        appendSegmentWithPeriodicBreaks(parent, value.substring(from, i));
+        appendWbr(parent);
+        from = i;
+      }
+    }
+    appendSegmentWithPeriodicBreaks(parent, value.substring(from));
+  }
+
+  function appendTextWithSemanticBreaks(parent, text) {
+    var value = String(text || "");
+    if (!value) return;
+    if (value.length < 8) {
+      parent.appendChild(document.createTextNode(value));
+      return;
+    }
+    if (value.indexOf(".") !== -1) {
+      appendBreaksAfter(parent, value, ".");
+    } else if (value.indexOf("_") !== -1) {
+      appendBreaksAfter(parent, value, "_");
+    } else if (value.indexOf("-") !== -1) {
+      appendBreaksAfter(parent, value, "-");
+    } else {
+      appendCamelBreaks(parent, value);
+    }
+  }
+
   function renderNavLabel(label, query) {
     var text = label.getAttribute("data-nav-label") || label.textContent || "";
     label.textContent = "";
     if (!query) {
-      label.appendChild(document.createTextNode(text));
+      appendTextWithSemanticBreaks(label, text);
       return;
     }
     var lower = text.toLowerCase();
     var from = 0;
     var index = lower.indexOf(query, from);
     while (index !== -1) {
-      if (index > from) label.appendChild(document.createTextNode(text.substring(from, index)));
+      if (index > from) appendTextWithSemanticBreaks(label, text.substring(from, index));
       var mark = document.createElement("mark");
       mark.className = "ad-search-highlight";
       mark.textContent = text.substring(index, index + query.length);
@@ -156,7 +235,7 @@
       from = index + query.length;
       index = lower.indexOf(query, from);
     }
-    if (from < text.length) label.appendChild(document.createTextNode(text.substring(from)));
+    if (from < text.length) appendTextWithSemanticBreaks(label, text.substring(from));
   }
 
   function highlightNavLabels(query) {
@@ -297,7 +376,8 @@
   });
 
   var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".ad-devsite-toc a[href^='#']"));
-  if (tocLinks.length) {
+  var contentEl = document.getElementById("main-content");
+  if (tocLinks.length && contentEl) {
     var tocTargets = tocLinks.map(function (link) {
       var id = decodeURIComponent(link.getAttribute("href").slice(1));
       return { link: link, target: document.getElementById(id) };
@@ -327,5 +407,26 @@
     window.addEventListener("scroll", requestTocSync, { passive: true });
     window.addEventListener("resize", requestTocSync);
     setActiveToc();
+  }
+  // Intercept hash link clicks to scroll the window
+  if (contentEl) {
+    contentEl.addEventListener("click", function (event) {
+      var link = event.target.closest("a[href^='#']");
+      if (!link) return;
+      var id = decodeURIComponent(link.getAttribute("href").slice(1));
+      var target = document.getElementById(id);
+      if (!target) return;
+      event.preventDefault();
+      window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 40, behavior: "smooth" });
+    });
+    // Handle initial URL hash on page load
+    if (location.hash) {
+      var hashTarget = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (hashTarget) {
+        setTimeout(function () {
+          window.scrollTo({ top: hashTarget.getBoundingClientRect().top + window.scrollY - 40, behavior: "instant" });
+        }, 100);
+      }
+    }
   }
 })();

@@ -271,6 +271,7 @@ class ProjectionBuilder {
                     displayName: member.id?.displayId ?: member.name,
                     declaration: memberDeclaration(member),
                     kind: member.kind,
+                    groupTitle: memberGroupTitle(member),
                     modifiers: new LinkedHashSet<String>(member.modifiers ?: []),
                     type: member.type,
                     returnType: member.returnType,
@@ -293,7 +294,7 @@ class ProjectionBuilder {
                 comment: type.comment,
                 metadata: type.metadata,
                 platforms: copyPlatforms(typePlatforms),
-                breadcrumbs: breadcrumbs(type),
+                breadcrumbs: breadcrumbs(type, "class"),
                 rightToc: rightToc(effectiveMembers),
                 apiStatus: apiStatus(type.metadata),
                 typeHeader: new AndroidTypeHeaderModel(
@@ -311,21 +312,42 @@ class ProjectionBuilder {
         )
     }
 
-    private static List<BreadcrumbModel> breadcrumbs(DocType type) {
-        [
-                new BreadcrumbModel(label: "Packages", url: "packages.html"),
-                new BreadcrumbModel(label: type.packageName ?: "default", url: packageUrl(type.packageName)),
-                new BreadcrumbModel(label: type.name, url: typeUrl(type), targetId: type.id)
+    private static List<BreadcrumbModel> breadcrumbs(DocType type, String pageType = "class") {
+        if (pageType == "class") {
+            // 类页面: Packages Index → 包名 → 类名
+            return [
+                    new BreadcrumbModel(label: "Packages Index", url: "index.html", isHome: true),
+                    new BreadcrumbModel(label: type.packageName ?: "default", url: packageUrl(type.packageName)),
+                    new BreadcrumbModel(label: type.name, url: typeUrl(type), targetId: type.id)
+            ]
+        }
+        return []
+    }
+
+    private static List<BreadcrumbModel> breadcrumbsForPackage(String packageName) {
+        // 包页面: Packages Index → 包名
+        return [
+                new BreadcrumbModel(label: "Packages Index", url: "index.html", isHome: true),
+                new BreadcrumbModel(label: packageName ?: "default", url: packageUrl(packageName))
         ]
     }
 
     private static List<TocEntryModel> rightToc(List<DocMember> members) {
-        List<TocEntryModel> entries = [new TocEntryModel(label: "Summary", anchor: "summary")]
+        List<TocEntryModel> entries = []
+        // Summary as 1级标题 (level 2)
+        entries.add(new TocEntryModel(label: "Summary", anchor: "summary"))
+        // Summary 下的各 group 作为 2级标题 (level 3)
         memberGroups(null, members).each { MemberGroupModel group ->
-            entries.add(new TocEntryModel(label: group.title, anchor: anchorName(group.title)))
+            entries.add(new TocEntryModel(label: group.title, anchor: anchorName(group.title), level: 3))
         }
-        if (!members.isEmpty()) {
-            entries.add(new TocEntryModel(label: "Details", anchor: "details"))
+        // 各 group 作为 1级标题 (level 2)，其下成员作为 2级标题 (level 3)
+        memberGroups(null, members).each { MemberGroupModel group ->
+            String detailAnchor = anchorName(group.title) + "-details"
+            entries.add(new TocEntryModel(label: group.title, anchor: detailAnchor))
+            group.members.each { MemberSummaryModel member ->
+                String anchor = member.id?.effectiveAnchorId() ?: member.name
+                entries.add(new TocEntryModel(label: member.name, anchor: anchor, level: 3))
+            }
         }
         return entries
     }
@@ -360,10 +382,8 @@ class ProjectionBuilder {
         List<DocMember> effectiveMembers = members ?: []
         LinkedHashMap<String, Closure<Boolean>> groups = [
                 "Nested Types" : { DocMember member -> false },
-                "Constants"    : { DocMember member -> isConstant(member) },
-                "Fields"       : { DocMember member -> member.kind == DocMemberKind.FIELD && !isConstant(member) },
-                "Constructors" : { DocMember member -> member.kind == DocMemberKind.CONSTRUCTOR },
-                "Methods"      : { DocMember member -> member.kind in [DocMemberKind.METHOD, DocMemberKind.ANNOTATION_ELEMENT] },
+                "Fields"       : { DocMember member -> member.kind in [DocMemberKind.FIELD, DocMemberKind.ENUM_CONSTANT] },
+                "Public Methods"     : { DocMember member -> member.kind in [DocMemberKind.CONSTRUCTOR, DocMemberKind.METHOD, DocMemberKind.ANNOTATION_ELEMENT] },
                 "Record Components": { DocMember member -> member.kind == DocMemberKind.RECORD_COMPONENT }
         ]
         List<MemberGroupModel> result = []
@@ -385,6 +405,14 @@ class ProjectionBuilder {
                             platforms: platforms
                     )
                 }
+                if (title == "Fields") {
+                    summaries = summaries.sort { MemberSummaryModel a, MemberSummaryModel b ->
+                        boolean aConst = a.kind == "constant"
+                        boolean bConst = b.kind == "constant"
+                        if (aConst != bConst) return aConst ? -1 : 1
+                        return (a.name ?: "").compareTo(b.name ?: "")
+                    }
+                }
                 result.add(new MemberGroupModel(
                         title: title,
                         kind: title.toUpperCase(Locale.ROOT).replaceAll(/\s+/, "_"),
@@ -404,6 +432,7 @@ class ProjectionBuilder {
                 summary: summary(pkg.comment),
                 metadata: pkg.metadata,
                 platforms: copyPlatforms(platforms),
+                breadcrumbs: breadcrumbsForPackage(pkg.name),
                 typeGroups: groupedTypes(types).collect { String label, List<DocType> grouped ->
                     List<TypePageModel> typeModels = grouped.collect { DocType type ->
                         typePageModel(type, [], [], platformForTypeKey(type, typePlatformsByKey), pkg)
@@ -436,6 +465,13 @@ class ProjectionBuilder {
                 .join(" ")
     }
 
+    private static String memberGroupTitle(DocMember member) {
+        if (member.kind in [DocMemberKind.FIELD, DocMemberKind.ENUM_CONSTANT]) return "Fields"
+        if (member.kind in [DocMemberKind.CONSTRUCTOR, DocMemberKind.METHOD, DocMemberKind.ANNOTATION_ELEMENT]) return "Public Methods"
+        if (member.kind == DocMemberKind.RECORD_COMPONENT) return "Record Components"
+        return ""
+    }
+
     private static String memberDeclaration(DocMember member) {
         String modifiers = member.modifiers?.join(" ") ?: ""
         if (member.kind == DocMemberKind.CONSTRUCTOR || member.kind == DocMemberKind.METHOD || member.kind == DocMemberKind.ANNOTATION_ELEMENT) {
@@ -454,10 +490,10 @@ class ProjectionBuilder {
     }
 
     private static String memberModifierAndType(DocMember member) {
-        String modifiers = member.modifiers?.join(" ") ?: ""
+        String modifiers = (member.modifiers ?: []).findAll { it != "public" }.join(" ")
         String type = ""
         if (member.kind == DocMemberKind.CONSTRUCTOR) {
-            type = ""
+            type = "constructor"
         } else if (member.kind in [DocMemberKind.METHOD, DocMemberKind.ANNOTATION_ELEMENT]) {
             type = member.returnType?.displayName ?: ""
         } else {

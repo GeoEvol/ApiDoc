@@ -41,7 +41,7 @@ class HtmlCommentRenderer {
         }
         List<BlockTag> params = comment.blockTags.findAll { it.kind == BlockTagKind.PARAM }
         if (params) {
-            out << "<section class=\"ad-detail-section\"><h4>Parameters</h4><table class=\"ad-detail-table\"><tbody>\n"
+            out << "<section class=\"ad-detail-section\"><table class=\"ad-detail-table\"><thead><tr class=\"ad-detail-heading-row\"><th colspan=\"2\" class=\"ad-detail-heading\"><h3 class=\"ad-sub-section-heading ad-member-section-title\"><span>Parameters</span></h3></th></tr></thead><tbody>\n"
             params.each { BlockTag tag ->
                 out << "<tr><td><code>${escape(tag.key)}</code></td><td>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</td></tr>\n"
             }
@@ -50,7 +50,7 @@ class HtmlCommentRenderer {
         List<BlockTag> returns = comment.blockTags.findAll { it.kind == BlockTagKind.RETURN }
         if (returns) {
             String renderedReturnType = returnType != null ? typeRefRenderer.render(returnType, fromPage, projection) : "Return value"
-            out << "<section class=\"ad-detail-section\"><h4>Returns</h4><table class=\"ad-detail-table\"><tbody>\n"
+            out << "<section class=\"ad-detail-section\"><table class=\"ad-detail-table\"><thead><tr class=\"ad-detail-heading-row\"><th colspan=\"2\" class=\"ad-detail-heading\"><h3 class=\"ad-sub-section-heading ad-member-section-title\"><span>Returns</span></h3></th></tr></thead><tbody>\n"
             returns.each { BlockTag tag ->
                 out << "<tr><td><code>${renderedReturnType}</code></td><td>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</td></tr>\n"
             }
@@ -58,7 +58,7 @@ class HtmlCommentRenderer {
         }
         List<BlockTag> throwsTags = comment.blockTags.findAll { it.kind == BlockTagKind.THROWS }
         if (throwsTags) {
-            out << "<section class=\"ad-detail-section\"><h4>Throws</h4><table class=\"ad-detail-table\"><tbody>\n"
+            out << "<section class=\"ad-detail-section\"><table class=\"ad-detail-table\"><thead><tr class=\"ad-detail-heading-row\"><th colspan=\"2\" class=\"ad-detail-heading\"><h3 class=\"ad-sub-section-heading ad-member-section-title\"><span>Throws</span></h3></th></tr></thead><tbody>\n"
             throwsTags.each { BlockTag tag ->
                 String key = renderThrowsKey(tag, fromPage, projection, throwsTypes)
                 out << "<tr><td><code>${key}</code></td><td>${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</td></tr>\n"

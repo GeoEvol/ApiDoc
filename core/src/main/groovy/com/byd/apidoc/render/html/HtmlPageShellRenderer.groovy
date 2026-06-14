@@ -5,26 +5,29 @@ import com.byd.apidoc.render.RenderContext
 
 class HtmlPageShellRenderer {
 
-    String render(RenderContext context, String title, String body, String prefix, String currentUrl = "", String tocHtml = null) {
+    String render(RenderContext context, String title, String body, String prefix, String currentUrl = "", String tocHtml = null, String timestamp = null) {
+        String v = context.assetVersion ?: ""
+        String cssFile = v ? "apidoc-${v}.css" : "apidoc.css"
+        String jsFile  = v ? "apidoc-${v}.js"  : "apidoc.js"
         return """<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escape(title)} - ${escape(context.projectName ?: 'API Reference')}</title>
-  <link rel="stylesheet" href="${prefix}assets/apidoc-devsite.css">
-  <link rel="stylesheet" href="${prefix}assets/apidoc.css">
+  <link rel="stylesheet" href="${prefix}assets/${cssFile}">
 </head>
 <body>
+  <!--
   <header class="ad-devsite-topbar" role="banner">
     <button class="ad-devsite-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="false"><img src="${prefix}assets/icon/menu.svg" alt="" aria-hidden="true">Menu</button>
     <a class="ad-brand" href="${prefix}index.html">${escape(context.projectName ?: 'API Reference')}</a>
   </header>
+  -->
   <div class="ad-devsite-shell">
     <nav class="ad-devsite-book-nav" id="ad-book-nav" aria-label="API navigation">
-      <div class="ad-reference-title">API REFERENCE</div>
+      ${searchBox()}
       <div class="ad-book-nav-scroll">
-        ${searchBox()}
 ${bookNav(context, prefix, currentUrl)}
       </div>
     </nav>
@@ -32,13 +35,15 @@ ${bookNav(context, prefix, currentUrl)}
       <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron.svg" alt="" aria-hidden="true">
     </button>
     <main class="ad-devsite-content" id="main-content">
+      <div class="ad-devsite-content-inner">
 ${body}
+      </div>
+      <footer class="ad-page-footer">Powered by DiCore Team.${timestamp ? " | Last updated ${timestamp}." : ""}</footer>
     </main>
     ${tocHtml ?: '<nav class="ad-devsite-toc" aria-label="On this page"></nav>'}
   </div>
-  <script src="${prefix}assets/search.js" data-root-prefix="${escapeAttr(prefix)}"></script>
-  <script src="${prefix}assets/apidoc-devsite.js"></script>
-  <script src="${prefix}assets/apidoc.js"></script>
+  <script src="${prefix}assets/${v ? "search-${v}.js" : "search.js"}" data-root-prefix="${escapeAttr(prefix)}"></script>
+  <script src="${prefix}assets/${jsFile}"></script>
 </body>
 </html>
 """
@@ -47,7 +52,7 @@ ${body}
     private static String bookNav(RenderContext context, String prefix, String currentUrl) {
         StringBuilder out = new StringBuilder()
         boolean packageIndexCurrent = currentUrl == 'index.html' || currentUrl == 'packages.html'
-        out << "      <details class=\"ad-packages-root\" id=\"ad-packages-root\">\n"
+        out << "      <details class=\"ad-packages-root\" id=\"ad-packages-root\" open>\n"
         out << "        <summary class=\"ad-packages-root-summary ad-nav-item\" data-filter-text=\"Packages\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-packages-root-label\" data-nav-label=\"Packages\">Packages</span></summary>\n"
         out << "        <div class=\"ad-packages-root-content\">\n"
         out << platformSelector(context)
@@ -57,21 +62,19 @@ ${body}
         (context.projection?.nav ?: []).each { NavNode node ->
             boolean packageOpen = isOnDescendantUrl(node, currentUrl)
             out << "          <details class=\"ad-book-section ad-package\"${platformData(node.platforms)}${packageOpen ? ' open' : ''}>\n"
-            out << "            <summary class=\"ad-book-package ad-nav-item${currentUrl == node.url ? ' is-current' : ''}\"${platformData(node.platforms)} data-filter-text=\"${escapeAttr(node.label)}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-package-name\" data-nav-label=\"${escapeAttr(node.label)}\">${escape(node.label)}</span></summary>\n"
+            out << "            <summary class=\"ad-book-package ad-nav-item${currentUrl == node.url ? ' is-current' : ''}\"${platformData(node.platforms)} data-filter-text=\"${escapeAttr(node.label)}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-package-name\" data-nav-label=\"${escapeAttr(node.label)}\">${insertSemanticBreaks(node.label)}</span></summary>\n"
             node.children.each { NavNode group ->
                 if (group.kind == com.byd.apidoc.projection.NavNodeKind.OVERVIEW) {
                     String current = currentUrl == group.url ? " is-current" : ""
                     out << "            <a class=\"ad-book-overview ad-nav-item${current}\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} Overview")}\" href=\"${prefix}${escapeAttr(group.url ?: '')}\"><span data-nav-label=\"${escapeAttr(group.label)}\">${escape(group.label)}</span></a>\n"
                 } else {
                     boolean groupOpen = (group.children ?: []).any { NavNode child -> currentUrl == child.url }
-                    String groupKind = kindKey(group.group ?: group.label)
-                    String icon = iconForGroup(group.group ?: group.label)
                     String groupLabel = titleCaseGroupLabel(group.label ?: group.group?.toString())
-                    out << "            <details class=\"ad-package-group\" data-group-kind=\"${escapeAttr(groupKind)}\"${platformData(group.platforms)}${groupOpen ? ' open' : ''}>\n"
+                    out << "            <details class=\"ad-package-group\"${platformData(group.platforms)}${groupOpen ? ' open' : ''}>\n"
                     out << "              <summary class=\"ad-book-group ad-nav-item\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${groupLabel}")}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-group-label\" data-nav-label=\"${escapeAttr(groupLabel)}\">${escape(groupLabel)}</span></summary>\n"
                     group.children.each { NavNode child ->
                         String current = currentUrl == child.url ? " is-current" : ""
-                        out << "              <a class=\"ad-book-type ad-nav-item${current}\"${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><img class=\"ad-kind-icon\" src=\"${prefix}assets/icon/${icon}.svg\" alt=\"\" aria-hidden=\"true\"><span data-nav-label=\"${escapeAttr(child.label)}\">${escape(child.label)}</span></a>\n"
+                        out << "              <a class=\"ad-book-type ad-nav-item${current}\"${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><span data-nav-label=\"${escapeAttr(child.label)}\">${insertSemanticBreaks(child.label)}</span></a>\n"
                     }
                     out << "            </details>\n"
                 }
@@ -101,17 +104,6 @@ ${body}
         return false
     }
 
-    private static String kindKey(String label) {
-        String key = (label ?: "").toLowerCase(Locale.ROOT).trim()
-        if (key.contains("interface")) return "interfaces"
-        if (key.contains("annotation")) return "annotations"
-        if (key.contains("enum")) return "enums"
-        if (key.contains("record")) return "records"
-        if (key.contains("exception")) return "exceptions"
-        if (key.contains("error")) return "errors"
-        return "classes"
-    }
-
     private static String platformSelector(RenderContext context) {
         List<String> platforms = context.projection?.platformFilter?.platforms ?: []
         String options = (["all"] + platforms).collect { String platform ->
@@ -126,17 +118,6 @@ ${options}
       </div>"""
     }
 
-    private static String iconForGroup(String group) {
-        String key = (group ?: "").toLowerCase(Locale.ROOT)
-        if (key.contains("interface")) return "interface"
-        if (key.contains("annotation")) return "annotation"
-        if (key.contains("enum")) return "enum"
-        if (key.contains("record")) return "record"
-        if (key.contains("exception")) return "exception"
-        if (key.contains("error")) return "exception"
-        return "class"
-    }
-
     private static String titleCaseGroupLabel(String label) {
         String text = (label ?: "").trim()
         if (!text) return ""
@@ -147,6 +128,50 @@ ${options}
     private static String platformData(Collection<String> platforms) {
         List<String> values = (platforms ?: []).findAll { it }.collect { it.toString() }
         return values ? " data-platforms=\"${escapeAttr(values.join(' '))}\"" : ""
+    }
+
+    static String insertSemanticBreaks(String text) {
+        if (!text || text.length() < 8) return escape(text)
+        String escaped = escape(text)
+        String result
+
+        // 包名（含点号）：点号保留在前一行末尾 → 在点号后插入 <wbr>
+        if (text.contains('.')) {
+            result = escaped.replace('.', '.<wbr>')
+        } else if (text.contains('_')) {
+            // 下划线名称：下划线保留在前一行末尾 → 在下划线后插入 <wbr>
+            result = escaped.replace('_', '_<wbr>')
+        } else if (text.contains('-')) {
+            // 连字符名称：连字符保留在前一行末尾 → 在连字符后插入 <wbr>
+            result = escaped.replace('-', '-<wbr>')
+        } else {
+            // 驼峰类名：按大写字母拆分 → 在大写字母前插入 <wbr>（首字符除外）
+            result = escaped.replaceAll(/(.)([A-Z])/, '$1<wbr>$2')
+        }
+
+        // 降级处理：纯小写长词每 12 字符插入 <wbr>
+        return insertPeriodicBreaks(result, 12)
+    }
+
+    private static String insertPeriodicBreaks(String html, int interval) {
+        if (!html || html.length() <= interval) return html
+        String[] segments = html.split('<wbr>')
+        List<String> processed = new ArrayList<>(segments.length)
+        for (String segment : segments) {
+            if (segment.length() <= interval) {
+                processed.add(segment)
+                continue
+            }
+            StringBuilder sb = new StringBuilder()
+            for (int i = 0; i < segment.length(); i++) {
+                sb.append(segment.charAt(i))
+                if ((i + 1) % interval == 0 && i + 1 < segment.length()) {
+                    sb.append('<wbr>')
+                }
+            }
+            processed.add(sb.toString())
+        }
+        return String.join('<wbr>', processed)
     }
 
     private static String escape(String text) {

@@ -86,6 +86,7 @@ class BreadcrumbModel {
     String label
     String url
     DocId targetId
+    boolean isHome = false
 }
 
 class TocEntryModel {
@@ -150,6 +151,7 @@ class MemberDetailModel {
     DocId id
     String name
     String displayName
+    String groupTitle
     String declaration
     DocMemberKind kind
     Set<String> modifiers = new LinkedHashSet<>()
@@ -171,6 +173,7 @@ class PackagePageModel {
     String summary
     ApiMetadata metadata
     List<String> platforms = []
+    List<BreadcrumbModel> breadcrumbs = []
     List<PackageTypeGroupModel> typeGroups = []
 }
 
