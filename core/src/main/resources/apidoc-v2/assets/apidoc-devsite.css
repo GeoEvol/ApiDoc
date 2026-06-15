@@ -29,6 +29,9 @@
   --ad-permission-text: #137333;
   --ad-neutral-bg: #f1f3f4;
   --ad-neutral-text: #3c4043;
+  --ad-scrollbar-thumb: #dee0e1;
+  --ad-scrollbar-thumb-hover: #cfd3d6;
+  --ad-scrollbar-track: #f8fafc;
   --ad-radius-sm: 4px;
   --ad-radius-md: 8px;
   --ad-header-height: 0px;
@@ -57,6 +60,8 @@
 html {
   background: var(--ad-canvas);
   color: var(--ad-text);
+  scrollbar-color: var(--ad-scrollbar-thumb) var(--ad-scrollbar-track);
+  scrollbar-width: thin;
 }
 
 body {
@@ -67,6 +72,31 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  scrollbar-color: var(--ad-scrollbar-thumb) var(--ad-scrollbar-track);
+  scrollbar-width: thin;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: var(--ad-scrollbar-track);
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  border: 2px solid var(--ad-scrollbar-track);
+  border-radius: 999px;
+  background-color: var(--ad-scrollbar-thumb);
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ad-scrollbar-thumb-hover);
 }
 
 a {
@@ -492,7 +522,26 @@ a.is-platform-disabled {
 }
 
 .ad-devsite-book-nav { display: flex; flex-direction: column; padding: 0; }
-.ad-book-nav-scroll  { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0px 14px 8px; background: var(--ad-surface); }
+.ad-book-nav-scroll  { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0px 14px 8px; background: var(--ad-surface); scrollbar-color: var(--ad-scrollbar-thumb) var(--ad-scrollbar-track); scrollbar-width: thin; }
+
+.ad-book-nav-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ad-book-nav-scroll::-webkit-scrollbar-track {
+  background: var(--ad-scrollbar-track);
+}
+
+.ad-book-nav-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid var(--ad-scrollbar-track);
+  border-radius: 999px;
+  background-color: var(--ad-scrollbar-thumb);
+}
+
+.ad-book-nav-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ad-scrollbar-thumb-hover);
+}
 
 .ad-book-nav-scroll .ad-nav-item {
   scroll-margin-top: 12px;
@@ -605,6 +654,46 @@ a.is-platform-disabled {
   display: none;
 }
 
+.ad-toc-jump-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 2px solid #202124;
+  border-radius: 50%;
+  background: transparent;
+  color: #202124;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, transform .15s ease;
+}
+
+.ad-toc-jump-toggle[hidden] {
+  display: none !important;
+}
+
+.ad-toc-jump-toggle:hover,
+.ad-toc-jump-toggle:focus-visible {
+  background: #202124;
+  color: #fff;
+}
+
+.ad-toc-jump-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform .15s ease;
+}
+
+.ad-toc-jump-toggle[data-state="top"] .ad-toc-jump-icon {
+  transform: rotate(180deg);
+}
+
 .ad-toc-title {
   position: sticky;
   top: 0;
@@ -638,7 +727,7 @@ a.is-platform-disabled {
 
 .ad-toc-level-3 {
   padding-left: 22px !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
 }
 
 .ad-api-index,
@@ -890,6 +979,7 @@ code {
   background: var(--ad-deprecated-bg);
   color: var(--ad-deprecated-text);
   padding: 10px 12px;
+  border-radius: var(--ad-radius-sm);
   font-weight: 500;
 }
 
@@ -1281,7 +1371,9 @@ code {
   font-size: 14px;
   font-weight: 500;
   white-space: normal;
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .ad-book-type,
@@ -1682,14 +1774,14 @@ code {
 
   .ad-sub-section-heading {
     font-size: 14px;
-    margin: 14px 0 10px;
+    margin: 0;
   }
 }
 
 /* Desktop visual polish: TOC, page rhythm, and reference density */
 @media (min-width: 1121px) {
   .ad-devsite-content-inner {
-    padding: 40px 40px 72px;
+    padding: 40px 40px 16px;
   }
 
   .ad-devsite-toc {
@@ -1803,7 +1895,7 @@ code {
 
 .ad-detail-description {
   max-width: 860px;
-  margin-bottom: 48px;
+  margin-bottom: 24px;
 }
 
 .ad-detail-description p {
@@ -1811,6 +1903,16 @@ code {
   color: #1f2937;
   line-height: 1.75;
   overflow-wrap: break-word;
+}
+
+.ad-detail-description .ad-attribution {
+  margin: 0 0 16px;
+  padding: 6px 10px;
+  border-radius: var(--ad-radius-sm);
+  background: var(--ad-neutral-bg);
+  color: var(--ad-neutral-text);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .ad-detail-section {
@@ -1924,7 +2026,7 @@ code {
 }
 
 .ad-member-detail {
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   padding-top: 0;
 }
 

@@ -137,41 +137,19 @@ ${options}
 
         // 包名（含点号）：点号保留在前一行末尾 → 在点号后插入 <wbr>
         if (text.contains('.')) {
-            result = escaped.replace('.', '.<wbr>')
+            return escaped.replace('.', '.<wbr>')
         } else if (text.contains('_')) {
             // 下划线名称：下划线保留在前一行末尾 → 在下划线后插入 <wbr>
-            result = escaped.replace('_', '_<wbr>')
+            return escaped.replace('_', '_<wbr>')
         } else if (text.contains('-')) {
             // 连字符名称：连字符保留在前一行末尾 → 在连字符后插入 <wbr>
-            result = escaped.replace('-', '-<wbr>')
+            return escaped.replace('-', '-<wbr>')
         } else {
             // 驼峰类名：按大写字母拆分 → 在大写字母前插入 <wbr>（首字符除外）
             result = escaped.replaceAll(/(.)([A-Z])/, '$1<wbr>$2')
         }
 
-        // 降级处理：纯小写长词每 12 字符插入 <wbr>
-        return insertPeriodicBreaks(result, 12)
-    }
-
-    private static String insertPeriodicBreaks(String html, int interval) {
-        if (!html || html.length() <= interval) return html
-        String[] segments = html.split('<wbr>')
-        List<String> processed = new ArrayList<>(segments.length)
-        for (String segment : segments) {
-            if (segment.length() <= interval) {
-                processed.add(segment)
-                continue
-            }
-            StringBuilder sb = new StringBuilder()
-            for (int i = 0; i < segment.length(); i++) {
-                sb.append(segment.charAt(i))
-                if ((i + 1) % interval == 0 && i + 1 < segment.length()) {
-                    sb.append('<wbr>')
-                }
-            }
-            processed.add(sb.toString())
-        }
-        return String.join('<wbr>', processed)
+        return result
     }
 
     private static String escape(String text) {

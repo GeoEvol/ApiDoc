@@ -25,6 +25,15 @@
 
   var bookToggle = document.querySelector(".ad-book-nav-toggle");
   var contentEl = document.getElementById("main-content");
+
+  function currentScrollTop() {
+    return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  }
+
+  function maxScrollTop() {
+    return Math.max(0, document.documentElement.scrollHeight - document.documentElement.clientHeight);
+  }
+
   function applyCollapsed(state) {
     document.body.classList.toggle("ad-nav-collapsed", state);
     var label = state ? "Show navigation" : "Hide navigation";
@@ -36,11 +45,11 @@
   }
 
   function toggleBookNav() {
-    var scrollable = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    var ratio = scrollable > 0 ? window.scrollY / scrollable : 0;
+    var scrollable = maxScrollTop();
+    var ratio = scrollable > 0 ? currentScrollTop() / scrollable : 0;
     applyCollapsed(!document.body.classList.contains("ad-nav-collapsed"));
     window.requestAnimationFrame(function () {
-      var nextScrollable = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      var nextScrollable = maxScrollTop();
       window.scrollTo({ top: Math.round(ratio * Math.max(0, nextScrollable)), behavior: "instant" });
     });
   }
@@ -162,14 +171,10 @@
     parent.appendChild(document.createElement("wbr"));
   }
 
-  function appendSegmentWithPeriodicBreaks(parent, text) {
+  function appendTextSegment(parent, text) {
     var value = String(text || "");
     if (!value) return;
-    var interval = 12;
-    for (var i = 0; i < value.length; i += interval) {
-      if (i > 0) appendWbr(parent);
-      parent.appendChild(document.createTextNode(value.substring(i, i + interval)));
-    }
+    parent.appendChild(document.createTextNode(value));
   }
 
   function appendBreaksAfter(parent, text, delimiter) {
@@ -177,12 +182,12 @@
     var from = 0;
     for (var i = 0; i < value.length; i++) {
       if (value.charAt(i) === delimiter) {
-        appendSegmentWithPeriodicBreaks(parent, value.substring(from, i + 1));
+        appendTextSegment(parent, value.substring(from, i + 1));
         appendWbr(parent);
         from = i + 1;
       }
     }
-    appendSegmentWithPeriodicBreaks(parent, value.substring(from));
+    appendTextSegment(parent, value.substring(from));
   }
 
   function appendCamelBreaks(parent, text) {
@@ -190,12 +195,12 @@
     var from = 0;
     for (var i = 1; i < value.length; i++) {
       if (/[A-Z]/.test(value.charAt(i))) {
-        appendSegmentWithPeriodicBreaks(parent, value.substring(from, i));
+        appendTextSegment(parent, value.substring(from, i));
         appendWbr(parent);
         from = i;
       }
     }
-    appendSegmentWithPeriodicBreaks(parent, value.substring(from));
+    appendTextSegment(parent, value.substring(from));
   }
 
   function appendTextWithSemanticBreaks(parent, text) {
@@ -375,6 +380,7 @@
     }
   });
 
+  var tocJumpToggle = document.querySelector(".ad-toc-jump-toggle");
   var tocLinks = Array.prototype.slice.call(document.querySelectorAll(".ad-devsite-toc a[href^='#']"));
   var contentEl = document.getElementById("main-content");
   if (tocLinks.length && contentEl) {
@@ -385,9 +391,28 @@
       return item.target;
     });
     var tocTicking = false;
+    function applyTocJumpState(active) {
+      if (!tocJumpToggle) return;
+      var scrollable = maxScrollTop();
+      if (!tocTargets.length || scrollable <= 0) {
+        tocJumpToggle.hidden = true;
+        return;
+      }
+      var last = tocTargets[tocTargets.length - 1];
+      var atLastSection = active === last || currentScrollTop() >= scrollable - 2;
+      var state = atLastSection ? "top" : "bottom";
+      var label = atLastSection ? "Back to top" : "Scroll to bottom";
+      tocJumpToggle.hidden = false;
+      tocJumpToggle.setAttribute("data-state", state);
+      tocJumpToggle.setAttribute("aria-label", label);
+      tocJumpToggle.setAttribute("data-title", label);
+    }
     function setActiveToc() {
       tocTicking = false;
-      if (!tocTargets.length) return;
+      if (!tocTargets.length) {
+        applyTocJumpState(null);
+        return;
+      }
       var active = tocTargets[0];
       var anchorLine = Math.max(90, Math.floor(window.innerHeight * 0.22));
       tocTargets.forEach(function (item) {
@@ -398,6 +423,7 @@
       if (active.link.scrollIntoView) {
         active.link.scrollIntoView({ block: "nearest" });
       }
+      applyTocJumpState(active);
     }
     function requestTocSync() {
       if (tocTicking) return;
@@ -406,7 +432,15 @@
     }
     window.addEventListener("scroll", requestTocSync, { passive: true });
     window.addEventListener("resize", requestTocSync);
+    if (tocJumpToggle) {
+      tocJumpToggle.addEventListener("click", function () {
+        var state = tocJumpToggle.getAttribute("data-state");
+        window.scrollTo({ top: state === "top" ? 0 : maxScrollTop(), behavior: "smooth" });
+      });
+    }
     setActiveToc();
+  } else if (tocJumpToggle) {
+    tocJumpToggle.hidden = true;
   }
   // Intercept hash link clicks to scroll the window
   if (contentEl) {

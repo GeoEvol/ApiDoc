@@ -186,7 +186,7 @@ ${items}
         }
         String typeTags = commentRenderer.renderBlockTags(page.comment, pageUrl, context.projection)
         if (typeTags) out << "        ${typeTags}\n"
-        if (page.inheritance?.displayName) {
+        if (page.inheritance?.displayName && page.inheritance.qualifiedName != "java.lang.Object") {
             out << "        <p><strong>Extends:</strong> ${typeRefRenderer.render(page.inheritance, pageUrl, context.projection)}</p>\n"
         }
         if (page.interfaces) {
@@ -236,7 +236,7 @@ ${items}
     }
 
     private String breadcrumbsForPackage(PackagePageModel page, String pageUrl) {
-        if (!page?.breadcrumbs) return ""
+        if (!page.breadcrumbs) return ""
         String links = page.breadcrumbs.withIndex().collect { BreadcrumbModel crumb, int index ->
             String href = crumb.url ? relativeUrl(pageUrl, crumb.url) : "#"
 
@@ -382,6 +382,7 @@ ${rows}
         return """<nav class="ad-devsite-toc" aria-label="On this page">
       <div class="ad-toc-title">On this page</div>
 ${items}
+${tocJumpButton()}
     </nav>"""
     }
 
@@ -390,6 +391,7 @@ ${items}
       <div class="ad-toc-title">On this page</div>
       <a class="ad-toc-level-2" href="#packages-index">Package Index</a>
       <a class="ad-toc-level-2" href="#packages-list">Package list</a>
+${tocJumpButton()}
     </nav>"""
     }
 
@@ -405,6 +407,7 @@ ${items}
       <div class="ad-toc-title">On this page</div>
       <a class="ad-toc-level-2" href="#classes-index">Class Index</a>
 ${items}
+${tocJumpButton()}
     </nav>"""
     }
 
@@ -417,7 +420,14 @@ ${items}
       <div class="ad-toc-title">On this page</div>
       <a class="ad-toc-level-2" href="#overview">Overview</a>
 ${items}
+${tocJumpButton()}
     </nav>"""
+    }
+
+    private static String tocJumpButton() {
+        return """      <button class="ad-toc-jump-toggle" type="button" aria-controls="main-content" aria-label="Scroll to bottom" data-title="Scroll to bottom" data-state="bottom" hidden>
+        <svg class="ad-toc-jump-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M4.5 6.25 8 9.75l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>"""
     }
 
     private static String simpleTypeName(TypePageModel page) {

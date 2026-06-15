@@ -40,6 +40,7 @@ import com.byd.apidoc.parser.javadoc.converter.DocTreeExtractor
 import com.sun.source.doctree.DeprecatedTree
 import com.sun.source.doctree.DocCommentTree
 import com.sun.source.doctree.DocTree
+import com.sun.source.doctree.EndElementTree
 import com.sun.source.doctree.InheritDocTree
 import com.sun.source.doctree.LinkTree
 import com.sun.source.doctree.LiteralTree
@@ -48,6 +49,7 @@ import com.sun.source.doctree.ReferenceTree
 import com.sun.source.doctree.ReturnTree
 import com.sun.source.doctree.SeeTree
 import com.sun.source.doctree.SinceTree
+import com.sun.source.doctree.StartElementTree
 import com.sun.source.doctree.TextTree
 import com.sun.source.doctree.ThrowsTree
 import com.sun.source.doctree.UnknownBlockTagTree
@@ -257,12 +259,35 @@ class DocCorpusBuilder {
             if (tree instanceof TextTree) {
                 return new CommentNode(kind: CommentNodeKind.TEXT, text: ((TextTree) tree).body)
             }
+            CommentNode htmlNode = htmlBoundaryNode(tree)
+            if (htmlNode != null) {
+                return htmlNode
+            }
             InlineTag inline = inlineTag(tree)
             if (inline != null) {
                 return new CommentNode(kind: CommentNodeKind.INLINE_TAG, inlineTag: inline, text: inline.rawText)
             }
             return new CommentNode(kind: CommentNodeKind.TEXT, text: tree.toString())
         }
+    }
+
+    private static CommentNode htmlBoundaryNode(DocTree tree) {
+        if (tree instanceof StartElementTree) {
+            String name = ((StartElementTree) tree).name?.toString()
+            if ("p".equalsIgnoreCase(name)) {
+                return new CommentNode(kind: CommentNodeKind.HTML, text: "<p>")
+            }
+            if ("br".equalsIgnoreCase(name)) {
+                return new CommentNode(kind: CommentNodeKind.HTML, text: "<br>")
+            }
+        }
+        if (tree instanceof EndElementTree) {
+            String name = ((EndElementTree) tree).name?.toString()
+            if ("p".equalsIgnoreCase(name)) {
+                return new CommentNode(kind: CommentNodeKind.HTML, text: "</p>")
+            }
+        }
+        return null
     }
 
     private List<InlineTag> inlineTags(List<? extends DocTree> trees) {
