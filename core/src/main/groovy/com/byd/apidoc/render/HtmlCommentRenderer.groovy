@@ -101,59 +101,152 @@ class HtmlCommentRenderer {
             return ""
         }
         String authorName = extractAuthorName(comment)
-        String sinceDate = extractSinceDate(comment)
-        if (!authorName && !sinceDate) {
+        AttributionSince since = extractSinceAttribution(comment)
+        String date = since.date ?: extractDateTag(comment)
+        if (!authorName && !date && !since.note) {
             return ""
         }
         List<String> parts = []
         if (authorName) parts.add(authorName)
-        if (sinceDate) parts.add(sinceDate)
-        return "<p class=\"ad-attribution\">Add by ${parts.join(" | ")}</p>"
+        if (date) parts.add(date)
+        StringBuilder out = new StringBuilder("<blockquote class=\"ad-attribution\">")
+        if (parts) {
+            out << "<p>${escape("Add by ${parts.join(' | ')}")}</p>"
+        }
+        if (since.note) {
+            out << "<p>${escape(since.note)}</p>"
+        }
+        out << "</blockquote>"
+        return out.toString()
     }
 
     private static String extractAuthorName(CommentDoc comment) {
-        // 首先从 blockTags 中查找
         if (comment.blockTags) {
             for (BlockTag tag : comment.blockTags) {
                 if (tag.kind == BlockTagKind.CUSTOM && tag.name == "author") {
-                    return tag.rawText ?: ""
+                    return normalizeInline(tag.rawText ?: "")
                 }
             }
         }
-        // 回退：从 rawText 中解析 @author 标签
-        // DocumentationTool API 不支持 -author 标志，JDK 默认会过滤掉 @author，
-        // 但 rawText (tree.toString()) 保留了完整的注释文本
         if (comment.rawText) {
-            def matcher = comment.rawText =~ /(?m)^@author\s+(.+)$/
+            def matcher = comment.rawText =~ /(?m)^\s*@author\s+(.+)$/
             if (matcher) {
-                return matcher[0][1]?.trim() ?: ""
+                return normalizeInline(matcher[0][1] ?: "")
             }
         }
         return ""
     }
 
-    private static String extractSinceDate(CommentDoc comment) {
-        // 首先从 blockTags 中查找
+    private static AttributionSince extractSinceAttribution(CommentDoc comment) {
         if (comment.blockTags) {
             for (BlockTag tag : comment.blockTags) {
                 if (tag.kind == BlockTagKind.SINCE && tag instanceof SinceTag) {
-                    return formatSinceDate(((SinceTag) tag).version)
+                    AttributionSince parsed = parseSinceAttribution(((SinceTag) tag).version ?: tag.rawText)
+                    if (parsed.date) {
+                        return parsed
+                    }
                 }
             }
+        }
+        if (comment.rawText) {
+            AttributionSince parsed = parseSinceAttribution(extractRawBlock(comment.rawText, "since"))
+            if (parsed.date) {
+                return parsed
+            }
+        }
+        return new AttributionSince()
+    }
+
+    private static String extractDateTag(CommentDoc comment) {
+        if (comment.blockTags) {
             for (BlockTag tag : comment.blockTags) {
                 if (tag.kind == BlockTagKind.CUSTOM && tag.name == "date") {
                     return formatSinceDate(tag.rawText ?: "")
                 }
             }
         }
-        // 回退：从 rawText 中解析 @since 或 @date 标签
         if (comment.rawText) {
-            def matcher = comment.rawText =~ /(?m)^@(?:since|date)\s+(.+)$/
+            def matcher = comment.rawText =~ /(?m)^\s*@date\s+(.+)$/
             if (matcher) {
                 return formatSinceDate(matcher[0][1]?.trim() ?: "")
             }
         }
         return ""
+    }
+
+    private static AttributionSince parseSinceAttribution(String text) {
+        String cleaned = normalizeMultiline(text)
+        if (!cleaned) {
+            return new AttributionSince()
+        }
+        List<String> lines = cleaned.readLines().collect { String line -> line.trim() }
+        int firstLineIndex = lines.findIndexOf { String line -> line }
+        if (firstLineIndex < 0) {
+            return new AttributionSince()
+        }
+        def matcher = lines[firstLineIndex] =~ /^(\S+)(?:\s+(.*))?$/
+        if (!matcher.matches()) {
+            return new AttributionSince()
+        }
+        String candidate = matcher.group(1)
+        if (!isDateLike(candidate)) {
+            return new AttributionSince()
+        }
+
+        List<String> noteLines = []
+        String remainder = matcher.group(2)?.trim()
+        if (remainder) {
+            noteLines.add(remainder)
+        }
+        for (int i = firstLineIndex + 1; i < lines.size(); i++) {
+            String line = lines[i]
+            if (!line) {
+                continue
+            }
+            if (line ==~ /^@\w+.*/) {
+                break
+            }
+            noteLines.add(line)
+        }
+        return new AttributionSince(
+                date: formatSinceDate(candidate),
+                note: normalizeInline(noteLines.join(" "))
+        )
+    }
+
+    private static String extractRawBlock(String rawText, String tagName) {
+        if (!rawText) {
+            return ""
+        }
+        def matcher = rawText =~ /(?ms)^\s*@${tagName}\s+(.+?)(?=^\s*@\w+\b|\z)/
+        if (matcher.find()) {
+            return matcher.group(1)?.trim() ?: ""
+        }
+        return ""
+    }
+
+    private static boolean isDateLike(String value) {
+        String cleaned = value?.trim()
+        if (!cleaned) {
+            return false
+        }
+        def separated = cleaned =~ /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/
+        if (separated.matches()) {
+            return validMonthDay(separated.group(2) as int, separated.group(3) as int)
+        }
+        def compactYear = cleaned =~ /^(\d{4})(\d{2})(\d{2})$/
+        if (compactYear.matches()) {
+            return validMonthDay(compactYear.group(2) as int, compactYear.group(3) as int)
+        }
+        def compactShort = cleaned =~ /^(\d{2})(\d{2})(\d{2})$/
+        if (compactShort.matches()) {
+            return validMonthDay(compactShort.group(2) as int, compactShort.group(3) as int)
+        }
+        return false
+    }
+
+    private static boolean validMonthDay(int month, int day) {
+        return month >= 1 && month <= 12 && day >= 1 && day <= 31
     }
 
     private static String formatSinceDate(String version) {
@@ -162,7 +255,6 @@ class HtmlCommentRenderer {
         }
         String cleaned = version.trim()
         try {
-            // 支持 yyyy-MM-dd, yyyy-M-d, yyyy/M/d, yyyy/MM/dd 等格式
             def matcher = cleaned =~ /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/
             if (matcher.matches()) {
                 int year = matcher.group(1) as int
@@ -173,6 +265,24 @@ class HtmlCommentRenderer {
         } catch (Exception ignored) {
         }
         return cleaned
+    }
+
+    private static String normalizeMultiline(String text) {
+        return (text ?: "")
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+                .trim()
+    }
+
+    private static String normalizeInline(String text) {
+        return (text ?: "")
+                .replaceAll(/\s+/, " ")
+                .trim()
+    }
+
+    private static class AttributionSince {
+        String date = ""
+        String note = ""
     }
 
     String renderNodes(List<CommentNode> nodes, String fromPage, DocProjection projection) {

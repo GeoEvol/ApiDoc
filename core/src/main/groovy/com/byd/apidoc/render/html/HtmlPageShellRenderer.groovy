@@ -57,24 +57,26 @@ ${body}
         out << "        <div class=\"ad-packages-root-content\">\n"
         out << platformSelector(context)
         out << "\n"
-        out << "          <a class=\"ad-book-link ad-book-index-link${currentUrl == 'classes.html' ? ' is-current' : ''}\" data-filter-text=\"Class Index\" href=\"${prefix}classes.html\"><span data-nav-label=\"Class Index\">Class Index</span></a>\n"
-        out << "          <a class=\"ad-book-link ad-book-index-link${packageIndexCurrent ? ' is-current' : ''}\" data-filter-text=\"Package Index\" href=\"${prefix}packages.html\"><span data-nav-label=\"Package Index\">Package Index</span></a>\n"
+        boolean classIndexCurrent = currentUrl == 'classes.html'
+        out << "          <a class=\"ad-book-link ad-book-index-link${currentClass(classIndexCurrent)}\"${ariaCurrent(classIndexCurrent)} data-filter-text=\"Class Index\" href=\"${prefix}classes.html\"><span data-nav-label=\"Class Index\">Class Index</span></a>\n"
+        out << "          <a class=\"ad-book-link ad-book-index-link${currentClass(packageIndexCurrent)}\"${ariaCurrent(packageIndexCurrent)} data-filter-text=\"Package Index\" href=\"${prefix}packages.html\"><span data-nav-label=\"Package Index\">Package Index</span></a>\n"
         (context.projection?.nav ?: []).each { NavNode node ->
             boolean packageOpen = isOnDescendantUrl(node, currentUrl)
             out << "          <details class=\"ad-book-section ad-package\"${platformData(node.platforms)}${packageOpen ? ' open' : ''}>\n"
-            out << "            <summary class=\"ad-book-package ad-nav-item${currentUrl == node.url ? ' is-current' : ''}\"${platformData(node.platforms)} data-filter-text=\"${escapeAttr(node.label)}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-package-name\" data-nav-label=\"${escapeAttr(node.label)}\">${insertSemanticBreaks(node.label)}</span></summary>\n"
+            boolean packageCurrent = currentUrl == node.url
+            out << "            <summary class=\"ad-book-package ad-nav-item${currentClass(packageCurrent)}\"${ariaCurrent(packageCurrent)}${platformData(node.platforms)} data-filter-text=\"${escapeAttr(node.label)}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-package-name\" data-nav-label=\"${escapeAttr(node.label)}\">${insertSemanticBreaks(node.label)}</span></summary>\n"
             node.children.each { NavNode group ->
                 if (group.kind == com.byd.apidoc.projection.NavNodeKind.OVERVIEW) {
-                    String current = currentUrl == group.url ? " is-current" : ""
-                    out << "            <a class=\"ad-book-overview ad-nav-item${current}\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} Overview")}\" href=\"${prefix}${escapeAttr(group.url ?: '')}\"><span data-nav-label=\"${escapeAttr(group.label)}\">${escape(group.label)}</span></a>\n"
+                    boolean current = currentUrl == group.url
+                    out << "            <a class=\"ad-book-overview ad-nav-item${currentClass(current)}\"${ariaCurrent(current)}${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} Overview")}\" href=\"${prefix}${escapeAttr(group.url ?: '')}\"><span data-nav-label=\"${escapeAttr(group.label)}\">${escape(group.label)}</span></a>\n"
                 } else {
                     boolean groupOpen = (group.children ?: []).any { NavNode child -> currentUrl == child.url }
                     String groupLabel = titleCaseGroupLabel(group.label ?: group.group?.toString())
                     out << "            <details class=\"ad-package-group\"${platformData(group.platforms)}${groupOpen ? ' open' : ''}>\n"
                     out << "              <summary class=\"ad-book-group ad-nav-item\"${platformData(group.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${groupLabel}")}\"><span class=\"ad-package-disclosure\"><img src=\"${prefix}assets/icon/chevron.svg\" alt=\"\" aria-hidden=\"true\"></span><span class=\"ad-group-label\" data-nav-label=\"${escapeAttr(groupLabel)}\">${escape(groupLabel)}</span></summary>\n"
                     group.children.each { NavNode child ->
-                        String current = currentUrl == child.url ? " is-current" : ""
-                        out << "              <a class=\"ad-book-type ad-nav-item${current}\"${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><span data-nav-label=\"${escapeAttr(child.label)}\">${insertSemanticBreaks(child.label)}</span></a>\n"
+                        boolean current = currentUrl == child.url
+                        out << "              <a class=\"ad-book-type ad-nav-item${currentClass(current)}\"${ariaCurrent(current)}${platformData(child.platforms)} data-filter-text=\"${escapeAttr("${node.label} ${group.label} ${child.label}")}\" href=\"${prefix}${escapeAttr(child.url ?: '')}\"><span data-nav-label=\"${escapeAttr(child.label)}\">${insertSemanticBreaks(child.label)}</span></a>\n"
                     }
                     out << "            </details>\n"
                 }
@@ -84,6 +86,14 @@ ${body}
         out << "        </div>\n"
         out << "      </details>\n"
         return out.toString()
+    }
+
+    private static String currentClass(boolean current) {
+        return current ? " is-current" : ""
+    }
+
+    private static String ariaCurrent(boolean current) {
+        return current ? ' aria-current="page"' : ""
     }
 
     private static String searchBox() {

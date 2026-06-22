@@ -522,7 +522,7 @@ a.is-platform-disabled {
 }
 
 .ad-devsite-book-nav { display: flex; flex-direction: column; padding: 0; }
-.ad-book-nav-scroll  { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0px 14px 8px; background: var(--ad-surface); scrollbar-color: var(--ad-scrollbar-thumb) var(--ad-scrollbar-track); scrollbar-width: thin; }
+.ad-book-nav-scroll  { flex: 1 1 auto; min-height: 0; overflow: auto; scroll-padding-block: 18px; padding: 0px 14px 8px; background: var(--ad-surface); scrollbar-color: var(--ad-scrollbar-thumb) var(--ad-scrollbar-track); scrollbar-width: thin; }
 
 .ad-book-nav-scroll::-webkit-scrollbar {
   width: 8px;
@@ -1906,13 +1906,25 @@ code {
 }
 
 .ad-detail-description .ad-attribution {
-  margin: 0 0 16px;
-  padding: 6px 10px;
-  border-radius: var(--ad-radius-sm);
-  background: var(--ad-neutral-bg);
-  color: var(--ad-neutral-text);
+  margin: 4px 0 16px;
+  padding: 0 0 0 14px;
+  border-left: 4px solid var(--ad-border-strong);
+  background: transparent;
+  color: var(--ad-muted);
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.ad-detail-description .ad-attribution p {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.ad-detail-description .ad-attribution p + p {
+  margin-top: 4px;
 }
 
 .ad-detail-section {
