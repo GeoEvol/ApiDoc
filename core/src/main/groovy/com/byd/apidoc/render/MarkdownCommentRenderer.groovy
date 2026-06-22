@@ -4,6 +4,7 @@ import com.byd.apidoc.comment.BlockTag
 import com.byd.apidoc.comment.BlockTagKind
 import com.byd.apidoc.comment.CommentDoc
 import com.byd.apidoc.comment.CommentNode
+import com.byd.apidoc.comment.CommentNodeKind
 import com.byd.apidoc.comment.InlineTag
 import com.byd.apidoc.comment.InlineTagKind
 import com.byd.apidoc.projection.DocProjection
@@ -73,10 +74,30 @@ class MarkdownCommentRenderer {
 
     private String renderNode(CommentNode node, String fromPage, DocProjection projection) {
         if (node == null) return ""
+        if (node.kind == CommentNodeKind.HTML) {
+            return ""
+        }
+        if (node.kind == CommentNodeKind.ENTITY) {
+            return renderEntity(node.text)
+        }
         if (node.inlineTag != null) {
             return renderInline(node.inlineTag, fromPage, projection)
         }
         return escape(node.text)
+    }
+
+    private static String renderEntity(String text) {
+        String value = (text ?: "").trim()
+        if (value.startsWith("&")) {
+            value = value.substring(1)
+        }
+        if (value.endsWith(";")) {
+            value = value.substring(0, value.length() - 1)
+        }
+        if (value ==~ /[A-Za-z][A-Za-z0-9]+|#[0-9]+|#x[0-9A-Fa-f]+/) {
+            return "&${value};"
+        }
+        return escape("&${value};")
     }
 
     private String renderInline(InlineTag tag, String fromPage, DocProjection projection) {

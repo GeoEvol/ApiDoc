@@ -15,6 +15,11 @@ class CommentDoc {
 class CommentNode {
     CommentNodeKind kind = CommentNodeKind.TEXT
     String text
+    String htmlName
+    Map<String, String> htmlAttributes = [:]
+    boolean htmlStart = false
+    boolean htmlEnd = false
+    boolean htmlSelfClosing = false
     InlineTag inlineTag
     List<CommentNode> children = []
 }

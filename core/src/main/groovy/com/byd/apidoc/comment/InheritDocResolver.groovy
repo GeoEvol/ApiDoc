@@ -245,6 +245,11 @@ class InheritDocResolver {
         new CommentNode(
                 kind: node.kind,
                 text: node.text,
+                htmlName: node.htmlName,
+                htmlAttributes: new LinkedHashMap<String, String>(node.htmlAttributes ?: [:]),
+                htmlStart: node.htmlStart,
+                htmlEnd: node.htmlEnd,
+                htmlSelfClosing: node.htmlSelfClosing,
                 inlineTag: copyInlineTag(node.inlineTag),
                 children: copyNodes(node.children)
         )

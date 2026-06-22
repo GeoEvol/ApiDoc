@@ -1905,6 +1905,71 @@ code {
   overflow-wrap: break-word;
 }
 
+.ad-detail-description h1,
+.ad-detail-description h2,
+.ad-detail-description h3,
+.ad-detail-description h4,
+.ad-detail-description h5,
+.ad-detail-description h6 {
+  margin: 22px 0 10px;
+  color: #111827;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+}
+
+.ad-detail-description h1,
+.ad-detail-description h2 {
+  font-size: 20px;
+}
+
+.ad-detail-description h3 {
+  font-size: 18px;
+}
+
+.ad-detail-description h4,
+.ad-detail-description h5,
+.ad-detail-description h6 {
+  font-size: 16px;
+}
+
+.ad-detail-description ul,
+.ad-detail-description ol {
+  margin: 0 0 16px 22px;
+  padding: 0;
+  color: #1f2937;
+  line-height: 1.72;
+}
+
+.ad-detail-description li {
+  margin: 4px 0;
+  padding-left: 2px;
+  overflow-wrap: break-word;
+}
+
+.ad-detail-description li > ul,
+.ad-detail-description li > ol {
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+.ad-detail-description code {
+  border-radius: 4px;
+  background: var(--ad-code-bg);
+  color: var(--ad-code-text);
+  padding: 1px 4px;
+}
+
+.ad-detail-description pre {
+  margin: 0 0 16px;
+}
+
+.ad-detail-description pre code {
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
 .ad-detail-description .ad-attribution {
   margin: 4px 0 16px;
   padding: 0 0 0 14px;

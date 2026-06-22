@@ -37,10 +37,12 @@ import com.byd.apidoc.model.TypeParameterRef
 import com.byd.apidoc.model.TypeRef
 import com.byd.apidoc.model.TypeRefKind
 import com.byd.apidoc.parser.javadoc.converter.DocTreeExtractor
+import com.sun.source.doctree.AttributeTree
 import com.sun.source.doctree.DeprecatedTree
 import com.sun.source.doctree.DocCommentTree
 import com.sun.source.doctree.DocTree
 import com.sun.source.doctree.EndElementTree
+import com.sun.source.doctree.EntityTree
 import com.sun.source.doctree.InheritDocTree
 import com.sun.source.doctree.LinkTree
 import com.sun.source.doctree.LiteralTree
@@ -259,7 +261,10 @@ class DocCorpusBuilder {
             if (tree instanceof TextTree) {
                 return new CommentNode(kind: CommentNodeKind.TEXT, text: ((TextTree) tree).body)
             }
-            CommentNode htmlNode = htmlBoundaryNode(tree)
+            if (tree instanceof EntityTree) {
+                return new CommentNode(kind: CommentNodeKind.ENTITY, text: ((EntityTree) tree).name?.toString())
+            }
+            CommentNode htmlNode = htmlNode(tree)
             if (htmlNode != null) {
                 return htmlNode
             }
@@ -271,23 +276,113 @@ class DocCorpusBuilder {
         }
     }
 
-    private static CommentNode htmlBoundaryNode(DocTree tree) {
+    private static CommentNode htmlNode(DocTree tree) {
         if (tree instanceof StartElementTree) {
-            String name = ((StartElementTree) tree).name?.toString()
-            if ("p".equalsIgnoreCase(name)) {
-                return new CommentNode(kind: CommentNodeKind.HTML, text: "<p>")
+            StartElementTree start = (StartElementTree) tree
+            String name = normalizeHtmlName(start.name?.toString())
+            if (!name) {
+                return null
             }
-            if ("br".equalsIgnoreCase(name)) {
-                return new CommentNode(kind: CommentNodeKind.HTML, text: "<br>")
-            }
+            return new CommentNode(
+                    kind: CommentNodeKind.HTML,
+                    text: tree.toString(),
+                    htmlName: name,
+                    htmlAttributes: htmlAttributes(start.attributes),
+                    htmlStart: true,
+                    htmlSelfClosing: start.selfClosing
+            )
         }
         if (tree instanceof EndElementTree) {
-            String name = ((EndElementTree) tree).name?.toString()
-            if ("p".equalsIgnoreCase(name)) {
-                return new CommentNode(kind: CommentNodeKind.HTML, text: "</p>")
+            EndElementTree end = (EndElementTree) tree
+            String name = normalizeHtmlName(end.name?.toString())
+            if (!name) {
+                return null
             }
+            return new CommentNode(
+                    kind: CommentNodeKind.HTML,
+                    text: tree.toString(),
+                    htmlName: name,
+                    htmlEnd: true
+            )
         }
         return null
+    }
+
+    private static Map<String, String> htmlAttributes(List<? extends DocTree> attributes) {
+        LinkedHashMap<String, String> result = new LinkedHashMap<>()
+        (attributes ?: []).each { DocTree attributeTree ->
+            if (!(attributeTree instanceof AttributeTree)) {
+                return
+            }
+            AttributeTree attribute = (AttributeTree) attributeTree
+            String name = attribute.name?.toString()
+            if (!name) {
+                return
+            }
+            String value = attribute.valueKind == AttributeTree.ValueKind.EMPTY ? "" : htmlAttributeValue(attribute.value)
+            result[name] = value
+        }
+        return result
+    }
+
+    private static String htmlAttributeValue(List<? extends DocTree> valueTrees) {
+        StringBuilder out = new StringBuilder()
+        (valueTrees ?: []).each { DocTree valueTree ->
+            if (valueTree instanceof TextTree) {
+                out << ((TextTree) valueTree).body
+            } else if (valueTree instanceof EntityTree) {
+                out << htmlAttributeEntityValue(((EntityTree) valueTree).name?.toString())
+            } else {
+                out << valueTree.toString()
+            }
+        }
+        return out.toString()
+    }
+
+    private static String htmlAttributeEntityValue(String value) {
+        String name = value?.trim()
+        if (!name) {
+            return ""
+        }
+        switch (name) {
+            case "amp":
+                return "&"
+            case "lt":
+                return "<"
+            case "gt":
+                return ">"
+            case "quot":
+                return "\""
+            case "apos":
+                return "'"
+        }
+        def decimal = name =~ /^#([0-9]+)$/
+        if (decimal.matches()) {
+            return codePointToString(decimal.group(1) as int, value)
+        }
+        def hex = name =~ /^#x([0-9A-Fa-f]+)$/
+        if (hex.matches()) {
+            return codePointToString(Integer.parseInt(hex.group(1), 16), value)
+        }
+        return "&${name};"
+    }
+
+    private static String codePointToString(int codePoint, String fallback) {
+        try {
+            if (Character.isValidCodePoint(codePoint)) {
+                return new String(Character.toChars(codePoint))
+            }
+        } catch (Exception ignored) {
+        }
+        return "&${fallback};"
+    }
+
+    private static String normalizeHtmlName(String value) {
+        String name = value?.trim()
+        if (!name || !(name ==~ /[A-Za-z][A-Za-z0-9:-]*/)) {
+            return ""
+        }
+        return name.toLowerCase(Locale.ROOT)
     }
 
     private List<InlineTag> inlineTags(List<? extends DocTree> trees) {

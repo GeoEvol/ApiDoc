@@ -4,6 +4,7 @@ import com.byd.apidoc.comment.BlockTag
 import com.byd.apidoc.comment.BlockTagKind
 import com.byd.apidoc.comment.CommentDoc
 import com.byd.apidoc.comment.CommentNode
+import com.byd.apidoc.comment.CommentNodeKind
 import com.byd.apidoc.comment.InlineTag
 import com.byd.apidoc.comment.InlineTagKind
 import com.byd.apidoc.comment.SinceTag
@@ -17,6 +18,19 @@ import com.byd.apidoc.projection.PageModel
 class HtmlCommentRenderer {
     private final HtmlLinkRenderer linkRenderer
     private final HtmlTypeRefRenderer typeRefRenderer
+
+    private static final Set<String> BLOCK_HTML_TAGS = [
+            "address", "article", "aside", "blockquote", "caption", "dd", "details", "div", "dl", "dt",
+            "figcaption", "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "li", "ol", "p",
+            "pre", "section", "summary", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "ul"
+    ] as Set
+    private static final Set<String> INLINE_HTML_TAGS = [
+            "a", "abbr", "b", "br", "cite", "code", "data", "del", "dfn", "em", "i", "ins", "kbd",
+            "mark", "q", "s", "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var", "wbr"
+    ] as Set
+    private static final Set<String> VOID_HTML_TAGS = ["br", "hr", "wbr"] as Set
+    private static final Set<String> URL_ATTRIBUTES = ["href", "src", "cite"] as Set
+    private static final Set<String> ALLOWED_TARGETS = ["_blank", "_self", "_parent", "_top"] as Set
 
     HtmlCommentRenderer(HtmlLinkRenderer linkRenderer = new HtmlLinkRenderer()) {
         this.linkRenderer = linkRenderer
@@ -79,21 +93,46 @@ class HtmlCommentRenderer {
     }
 
     String renderBodyBlocks(List<CommentNode> nodes, String fromPage, DocProjection projection, String attribution = "") {
-        List<List<CommentNode>> blocks = [[]]
+        String content = renderBodyFlow(nodes, fromPage, projection)
+        if (!content && !attribution) return ""
+        return "<div class=\"ad-detail-description\">${content}${attribution}</div>"
+    }
+
+    private String renderBodyFlow(List<CommentNode> nodes, String fromPage, DocProjection projection) {
+        StringBuilder out = new StringBuilder()
+        StringBuilder inline = new StringBuilder()
+        int blockDepth = 0
         (nodes ?: []).each { CommentNode node ->
-            if (isParagraphBoundary(node)) {
-                if (blocks.last()) {
-                    blocks.add([])
+            if (isAllowedBlockHtml(node)) {
+                flushInlineParagraph(out, inline)
+                out << renderNode(node, fromPage, projection)
+                if (node.htmlEnd) {
+                    blockDepth = Math.max(0, blockDepth - 1)
+                } else if (node.htmlStart && !node.htmlSelfClosing && !isVoidHtmlNode(node)) {
+                    blockDepth++
                 }
+                return
+            }
+            String rendered = renderNode(node, fromPage, projection)
+            if (!rendered) {
+                return
+            }
+            if (blockDepth > 0) {
+                out << rendered
             } else {
-                blocks.last().add(node)
+                inline << rendered
             }
         }
-        List<String> paragraphs = blocks.collect { List<CommentNode> block ->
-            renderNodes(block, fromPage, projection)
-        }.findAll { it }
-        if (!paragraphs && !attribution) return ""
-        return "<div class=\"ad-detail-description\">${paragraphs.collect { "<p>${it}</p>" }.join("")}${attribution}</div>"
+        flushInlineParagraph(out, inline)
+        return out.toString().trim()
+    }
+
+    private static void flushInlineParagraph(StringBuilder out, StringBuilder inline) {
+        String content = inline.toString().trim()
+        if (content) {
+            out << "<p>${content}</p>"
+        }
+        inline.setLength(0)
     }
 
     private static String renderAttribution(CommentDoc comment) {
@@ -288,38 +327,167 @@ class HtmlCommentRenderer {
     String renderNodes(List<CommentNode> nodes, String fromPage, DocProjection projection) {
         return (nodes ?: []).collect { renderNode(it, fromPage, projection) }
                 .findAll { it != null && !it.isEmpty() }
-                .join(" ")
-                .replaceAll(/\s*<br>\s*/, '<br>')
-                .replaceAll(/\s+/, " ")
+                .join("")
                 .replaceAll(/\s+([,.;:!?])/, '$1')
                 .trim()
     }
 
     private String renderNode(CommentNode node, String fromPage, DocProjection projection) {
         if (node == null) return ""
-        if (node.kind == com.byd.apidoc.comment.CommentNodeKind.HTML) {
-            return renderHtmlNode(node.text)
+        if (node.kind == CommentNodeKind.HTML) {
+            return renderHtmlNode(node)
+        }
+        if (node.kind == CommentNodeKind.ENTITY) {
+            return renderEntity(node.text)
         }
         if (node.inlineTag != null) {
             return renderInline(node.inlineTag, fromPage, projection)
         }
         if ((node.text ?: "") ==~ /(?i)<\/?p\s*\/?>|<br\s*\/?>/) {
-            return renderHtmlNode(node.text)
+            return renderLegacyHtmlNode(node.text)
         }
         return escape(node.text)
     }
 
-    private static String renderHtmlNode(String text) {
+    private static String renderHtmlNode(CommentNode node) {
+        String name = normalizeHtmlName(node.htmlName)
+        if (!name) {
+            return renderLegacyHtmlNode(node.text)
+        }
+        if (!isAllowedHtmlTag(name)) {
+            return escape(node.text ?: "<${node.htmlEnd ? '/' : ''}${name}>")
+        }
+        if (node.htmlEnd) {
+            return VOID_HTML_TAGS.contains(name) ? "" : "</${name}>"
+        }
+        if (!node.htmlStart) {
+            return escape(node.text)
+        }
+        String attributes = renderHtmlAttributes(name, node.htmlAttributes ?: [:])
+        if (VOID_HTML_TAGS.contains(name)) {
+            return "<${name}${attributes}>"
+        }
+        if (node.htmlSelfClosing) {
+            return "<${name}${attributes}></${name}>"
+        }
+        return "<${name}${attributes}>"
+    }
+
+    private static String renderLegacyHtmlNode(String text) {
         String value = text ?: ""
         if (value ==~ /(?i)<\/?p\s*\/?>/) return ""
         if (value ==~ /(?i)<br\s*\/?>/) return "<br>"
         return escape(value)
     }
 
-    private static boolean isParagraphBoundary(CommentNode node) {
-        if (node?.kind != com.byd.apidoc.comment.CommentNodeKind.HTML) return false
-        String value = node.text ?: ""
-        return value ==~ /(?i)<\/?p\s*\/?>/
+    private static boolean isAllowedBlockHtml(CommentNode node) {
+        if (node?.kind != CommentNodeKind.HTML) return false
+        String name = normalizeHtmlName(node.htmlName)
+        return name && BLOCK_HTML_TAGS.contains(name) && isAllowedHtmlTag(name)
+    }
+
+    private static boolean isVoidHtmlNode(CommentNode node) {
+        String name = normalizeHtmlName(node?.htmlName)
+        return name && VOID_HTML_TAGS.contains(name)
+    }
+
+    private static boolean isAllowedHtmlTag(String name) {
+        return BLOCK_HTML_TAGS.contains(name) || INLINE_HTML_TAGS.contains(name)
+    }
+
+    private static String renderHtmlAttributes(String tagName, Map<String, String> attributes) {
+        LinkedHashMap<String, String> safe = new LinkedHashMap<>()
+        (attributes ?: [:]).each { String rawName, String rawValue ->
+            String name = normalizeAttributeName(rawName)
+            if (!isAllowedAttribute(tagName, name)) {
+                return
+            }
+            String value = rawValue ?: ""
+            if (URL_ATTRIBUTES.contains(name) && !isSafeUrl(value)) {
+                return
+            }
+            if (name == "target" && !ALLOWED_TARGETS.contains(value)) {
+                return
+            }
+            safe[name] = value
+        }
+        if (tagName == "a" && safe["target"] == "_blank" && !safe.containsKey("rel")) {
+            safe["rel"] = "noopener noreferrer"
+        }
+        return safe.collect { String name, String value ->
+            value == "" ? " ${name}" : " ${name}=\"${escapeAttribute(value)}\""
+        }.join("")
+    }
+
+    private static boolean isAllowedAttribute(String tagName, String name) {
+        if (!name || name.startsWith("on")) {
+            return false
+        }
+        if (name in ["id", "class", "title", "role", "dir", "lang"] || name.startsWith("aria-") || name.startsWith("data-")) {
+            return true
+        }
+        switch (tagName) {
+            case "a":
+                return name in ["href", "name", "target", "rel"]
+            case "blockquote":
+            case "q":
+            case "del":
+            case "ins":
+                return name == "cite"
+            case "time":
+                return name == "datetime"
+            case "td":
+            case "th":
+                return name in ["colspan", "rowspan", "scope", "headers"]
+            default:
+                return false
+        }
+    }
+
+    private static String normalizeHtmlName(String value) {
+        String name = value?.trim()
+        if (!name || !(name ==~ /[A-Za-z][A-Za-z0-9:-]*/)) {
+            return ""
+        }
+        return name.toLowerCase(Locale.ROOT)
+    }
+
+    private static String normalizeAttributeName(String value) {
+        String name = value?.trim()
+        if (!name || !(name ==~ /[A-Za-z_:][A-Za-z0-9_:.-]*/)) {
+            return ""
+        }
+        return name.toLowerCase(Locale.ROOT)
+    }
+
+    private static boolean isSafeUrl(String value) {
+        String trimmed = value?.trim()
+        if (!trimmed) {
+            return false
+        }
+        String lower = trimmed.toLowerCase(Locale.ROOT)
+        if (lower.startsWith("#") || lower.startsWith("/") || lower.startsWith("./") || lower.startsWith("../")) {
+            return true
+        }
+        def scheme = lower =~ /^([a-z][a-z0-9+.-]*):.*/
+        if (scheme.matches()) {
+            return scheme.group(1) in ["http", "https", "mailto", "tel"]
+        }
+        return !lower.startsWith("javascript:") && !lower.startsWith("data:")
+    }
+
+    private static String renderEntity(String text) {
+        String value = (text ?: "").trim()
+        if (value.startsWith("&")) {
+            value = value.substring(1)
+        }
+        if (value.endsWith(";")) {
+            value = value.substring(0, value.length() - 1)
+        }
+        if (value ==~ /[A-Za-z][A-Za-z0-9]+|#[0-9]+|#x[0-9A-Fa-f]+/) {
+            return "&${value};"
+        }
+        return escape("&${value};")
     }
 
     private String renderInline(InlineTag tag, String fromPage, DocProjection projection) {
@@ -364,6 +532,12 @@ class HtmlCommentRenderer {
             ), fromPage, projection)
         }
         return escape(tag.key)
+    }
+
+    private static String escapeAttribute(String text) {
+        return escape(text)
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;")
     }
 
     private static String escape(String text) {
