@@ -1,5 +1,6 @@
 package com.byd.apidoc.render.html
 
+import com.byd.apidoc.comment.CommentDoc
 import com.byd.apidoc.metadata.ApiValueRange
 import com.byd.apidoc.model.DocMemberKind
 import com.byd.apidoc.model.DocParameter
@@ -210,7 +211,7 @@ ${items}
                 out << "        <section class=\"ad-member-details\" id=\"${escapeAttr(detailAnchor)}\">\n"
                 out << "          <h2 class=\"ad-section-heading\"><span>${escape(group.title)}</span><button class=\"ad-copy-anchor\" type=\"button\" data-anchor=\"${escapeAttr(detailAnchor)}\" aria-label=\"Copy anchor link\"><img src=\"${rootPrefix(pageUrl)}assets/icon/link.svg\" alt=\"\" aria-hidden=\"true\"></button></h2>\n"
                 groupDetails.each { MemberDetailModel detail ->
-                    out << memberDetail(context, pageUrl, detail)
+                    out << memberDetail(context, pageUrl, detail, page.comment)
                 }
                 out << "        </section>\n"
             }
@@ -278,13 +279,13 @@ ${rows}
 """
     }
 
-    private String memberDetail(RenderContext context, String pageUrl, MemberDetailModel detail) {
+    private String memberDetail(RenderContext context, String pageUrl, MemberDetailModel detail, CommentDoc classComment = null) {
         StringBuilder out = new StringBuilder()
         out << "          <section id=\"${escapeAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\" class=\"ad-member-detail\"${platformData(detail.platforms)}>\n"
         out << "            <h3>${escape(detail.name)} <button class=\"ad-copy-anchor\" type=\"button\" data-anchor=\"${escapeAttr(detail.id?.effectiveAnchorId() ?: detail.name)}\" aria-label=\"Copy anchor link\"><img src=\"${rootPrefix(pageUrl)}assets/icon/link.svg\" alt=\"\" aria-hidden=\"true\"></button>${platformBadges(detail.platforms)}</h3>\n"
         out << apiStatus(detail.status)
         if (detail.declaration) out << "            <pre class=\"ad-member-signature ad-signature-card\"><code>${memberDeclaration(detail, pageUrl)}</code><button class=\"ad-copy-code\" type=\"button\" aria-label=\"Copy signature\"><img src=\"${rootPrefix(pageUrl)}assets/icon/copy.svg\" alt=\"\" aria-hidden=\"true\"></button></pre>\n"
-        String detailBody = commentRenderer.renderBody(detail.comment, pageUrl, context.projection)
+        String detailBody = commentRenderer.renderBody(detail.comment, pageUrl, context.projection, classComment)
         if (detailBody) {
             out << "            ${detailBody}\n"
         } else if (detail.summary) {
@@ -425,8 +426,8 @@ ${tocJumpButton()}
     }
 
     private static String tocJumpButton() {
-        return """      <button class="ad-toc-jump-toggle" type="button" aria-controls="main-content" aria-label="Scroll to bottom" data-title="Scroll to bottom" data-state="bottom" hidden>
-        <svg class="ad-toc-jump-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M4.5 6.25 8 9.75l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        return """      <button class="ad-toc-jump-toggle" type="button" aria-controls="main-content" aria-label="Back to top" data-title="Back to top" hidden>
+        <svg class="ad-toc-jump-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M4.5 9.75 8 6.25l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>"""
     }
 
@@ -493,9 +494,9 @@ ${tocJumpButton()}
     ]
 
     private static String platformBadgeTag(String platform) {
-        String tooltip = PLATFORM_LABELS[platform]
-        if (tooltip) {
-            return "<span class=\"ad-platform-badge\" data-tooltip=\"${escapeAttr(tooltip)}\">${escape(platform)}</span>"
+        String label = PLATFORM_LABELS[platform]
+        if (label) {
+            return "<span class=\"ad-platform-badge\" data-tooltip=\"${escapeAttr(platform)}\">${escape(label)}</span>"
         }
         return "<span class=\"ad-platform-badge\">${escape(platform)}</span>"
     }

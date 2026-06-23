@@ -35,7 +35,7 @@ ${bookNav(context, prefix, currentUrl)}
       </div>
     </nav>
     <button class="ad-book-nav-toggle" type="button" aria-controls="ad-book-nav" aria-expanded="true" aria-label="Hide navigation" data-title="Hide navigation">
-      <img class="ad-book-nav-toggle-icon" src="${prefix}assets/icon/chevron.svg" alt="" aria-hidden="true">
+      <svg class="ad-book-nav-toggle-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M6 11.5 9.5 8 6 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <main class="ad-devsite-content" id="main-content">
       <div class="ad-devsite-content-inner">
@@ -139,10 +139,18 @@ ${body}
         return false
     }
 
+    private static final Map<String, String> PLATFORM_LABELS = [
+            "DiLink150VCP"    : "舱驾B",
+            "DiLink300VCP"    : "舱驾B+",
+            "DiLinkF_300VCP"  : "舱驾B+F",
+            "DiLink300"       : "D300",
+            "DiLink300F"      : "D300F"
+    ]
+
     private static String platformSelector(RenderContext context) {
         List<String> platforms = context.projection?.platformFilter?.platforms ?: []
         String options = (["all"] + platforms).collect { String platform ->
-            String label = platform == "all" ? "All Platforms" : platform
+            String label = platform == "all" ? "All Platforms" : (PLATFORM_LABELS[platform] ?: platform)
             "          <option value=\"${escapeAttr(platform)}\">${escape(label)}</option>"
         }.join("\n")
         return """          <div class="ad-platform-selector">

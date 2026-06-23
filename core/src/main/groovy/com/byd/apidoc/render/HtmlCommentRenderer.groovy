@@ -41,9 +41,9 @@ class HtmlCommentRenderer {
         return renderNodes(comment?.summaryNodes, fromPage, projection).trim()
     }
 
-    String renderBody(CommentDoc comment, String fromPage, DocProjection projection) {
-        String attribution = renderAttribution(comment)
-        return renderBodyBlocks(comment?.bodyNodes, fromPage, projection, attribution)
+    String renderBody(CommentDoc comment, String fromPage, DocProjection projection, CommentDoc parentComment = null) {
+        String attributionBlock = renderAttributionBlock(comment, parentComment)
+        return renderBodyBlocks(comment?.bodyNodes, fromPage, projection, attributionBlock)
     }
 
     String renderBlockTags(CommentDoc comment, String fromPage, DocProjection projection, List<TypeRef> throwsTypes = [], TypeRef returnType = null) {
@@ -92,10 +92,10 @@ class HtmlCommentRenderer {
         return out.toString()
     }
 
-    String renderBodyBlocks(List<CommentNode> nodes, String fromPage, DocProjection projection, String attribution = "") {
+    String renderBodyBlocks(List<CommentNode> nodes, String fromPage, DocProjection projection, String attributionBlock = "") {
         String content = renderBodyFlow(nodes, fromPage, projection)
-        if (!content && !attribution) return ""
-        return "<div class=\"ad-detail-description\">${content}${attribution}</div>"
+        if (!content && !attributionBlock) return ""
+        return "<div class=\"ad-detail-description\">${content}${attributionBlock}</div>"
     }
 
     private String renderBodyFlow(List<CommentNode> nodes, String fromPage, DocProjection projection) {
@@ -135,157 +135,194 @@ class HtmlCommentRenderer {
         inline.setLength(0)
     }
 
-    private static String renderAttribution(CommentDoc comment) {
+    private String renderAttributionBlock(CommentDoc comment, CommentDoc parentComment = null) {
         if (comment == null) {
             return ""
         }
         String authorName = extractAuthorName(comment)
-        AttributionSince since = extractSinceAttribution(comment)
-        String date = since.date ?: extractDateTag(comment)
-        if (!authorName && !date && !since.note) {
-            return ""
+        boolean hasSince = hasSinceTag(comment)
+        String sinceDate = extractSinceDate(comment)
+        // 方法注释：只有当方法与类注释的 author/since 不同时才显示
+        if (parentComment != null) {
+            String parentAuthor = extractAuthorName(parentComment)
+            boolean parentHasSince = hasSinceTag(parentComment)
+            String parentSince = parentHasSince ? extractSinceDate(parentComment) : ""
+            // 如果方法没有 @author 或 @since，不显示
+            if (!authorName || !hasSince || !sinceDate) {
+                return ""
+            }
+            // 如果方法的 author 和 since 与类完全相同，不显示
+            if (parentHasSince && authorName == parentAuthor && sinceDate == parentSince) {
+                return ""
+            }
+        } else {
+            // 类页面：没有 author 或 since 则不显示
+            if (!authorName || !hasSince || !sinceDate) {
+                return ""
+            }
         }
         List<String> parts = []
         if (authorName) parts.add(authorName)
-        if (date) parts.add(date)
-        StringBuilder out = new StringBuilder("<blockquote class=\"ad-attribution\">")
-        if (parts) {
-            out << "<p>${escape("Add by ${parts.join(' | ')}")}</p>"
+        if (sinceDate) parts.add(sinceDate)
+        // 提取 @author/@since/@date 之后出现的正文内容
+        String postText = extractPostAttributionText(comment)
+        String attributionText = "Add by ${parts.join(' | ')}"
+        StringBuilder block = new StringBuilder("<blockquote class=\"ad-attribution\">")
+        block << "<p>${escape(attributionText)}</p>"
+        if (postText) {
+            block << "<p>${escape(postText)}</p>"
         }
-        if (since.note) {
-            out << "<p>${escape(since.note)}</p>"
-        }
-        out << "</blockquote>"
-        return out.toString()
+        block << "</blockquote>"
+        return block.toString()
     }
 
     private static String extractAuthorName(CommentDoc comment) {
+        // 首先从 blockTags 中查找
         if (comment.blockTags) {
             for (BlockTag tag : comment.blockTags) {
                 if (tag.kind == BlockTagKind.CUSTOM && tag.name == "author") {
-                    return normalizeInline(tag.rawText ?: "")
+                    return tag.rawText?.trim()?.split(/\n/)[0]?.trim() ?: ""
                 }
             }
         }
+        // 回退：从 rawText 中解析 @author 标签
+        // DocumentationTool API 不支持 -author 标志，JDK 默认会过滤掉 @author，
+        // 但 rawText (tree.toString()) 保留了完整的注释文本
         if (comment.rawText) {
-            def matcher = comment.rawText =~ /(?m)^\s*@author\s+(.+)$/
+            def matcher = comment.rawText =~ /(?m)^@author\s+(.+)$/
             if (matcher) {
-                return normalizeInline(matcher[0][1] ?: "")
+                return unescapeJavaUnicode(matcher[0][1]?.trim()?.split(/\n/)[0]?.trim() ?: "")
             }
         }
         return ""
     }
 
-    private static AttributionSince extractSinceAttribution(CommentDoc comment) {
-        if (comment.blockTags) {
-            for (BlockTag tag : comment.blockTags) {
-                if (tag.kind == BlockTagKind.SINCE && tag instanceof SinceTag) {
-                    AttributionSince parsed = parseSinceAttribution(((SinceTag) tag).version ?: tag.rawText)
-                    if (parsed.date) {
-                        return parsed
-                    }
-                }
-            }
+    private static boolean hasSinceTag(CommentDoc comment) {
+        if (comment?.blockTags?.any { BlockTag tag -> tag.kind == BlockTagKind.SINCE }) {
+            return true
         }
-        if (comment.rawText) {
-            AttributionSince parsed = parseSinceAttribution(extractRawBlock(comment.rawText, "since"))
-            if (parsed.date) {
-                return parsed
-            }
-        }
-        return new AttributionSince()
-    }
-
-    private static String extractDateTag(CommentDoc comment) {
-        if (comment.blockTags) {
-            for (BlockTag tag : comment.blockTags) {
-                if (tag.kind == BlockTagKind.CUSTOM && tag.name == "date") {
-                    return formatSinceDate(tag.rawText ?: "")
-                }
-            }
-        }
-        if (comment.rawText) {
-            def matcher = comment.rawText =~ /(?m)^\s*@date\s+(.+)$/
-            if (matcher) {
-                return formatSinceDate(matcher[0][1]?.trim() ?: "")
-            }
-        }
-        return ""
-    }
-
-    private static AttributionSince parseSinceAttribution(String text) {
-        String cleaned = normalizeMultiline(text)
-        if (!cleaned) {
-            return new AttributionSince()
-        }
-        List<String> lines = cleaned.readLines().collect { String line -> line.trim() }
-        int firstLineIndex = lines.findIndexOf { String line -> line }
-        if (firstLineIndex < 0) {
-            return new AttributionSince()
-        }
-        def matcher = lines[firstLineIndex] =~ /^(\S+)(?:\s+(.*))?$/
-        if (!matcher.matches()) {
-            return new AttributionSince()
-        }
-        String candidate = matcher.group(1)
-        if (!isDateLike(candidate)) {
-            return new AttributionSince()
-        }
-
-        List<String> noteLines = []
-        String remainder = matcher.group(2)?.trim()
-        if (remainder) {
-            noteLines.add(remainder)
-        }
-        for (int i = firstLineIndex + 1; i < lines.size(); i++) {
-            String line = lines[i]
-            if (!line) {
-                continue
-            }
-            if (line ==~ /^@\w+.*/) {
-                break
-            }
-            noteLines.add(line)
-        }
-        return new AttributionSince(
-                date: formatSinceDate(candidate),
-                note: normalizeInline(noteLines.join(" "))
-        )
-    }
-
-    private static String extractRawBlock(String rawText, String tagName) {
-        if (!rawText) {
-            return ""
-        }
-        def matcher = rawText =~ /(?ms)^\s*@${tagName}\s+(.+?)(?=^\s*@\w+\b|\z)/
-        if (matcher.find()) {
-            return matcher.group(1)?.trim() ?: ""
-        }
-        return ""
-    }
-
-    private static boolean isDateLike(String value) {
-        String cleaned = value?.trim()
-        if (!cleaned) {
-            return false
-        }
-        def separated = cleaned =~ /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/
-        if (separated.matches()) {
-            return validMonthDay(separated.group(2) as int, separated.group(3) as int)
-        }
-        def compactYear = cleaned =~ /^(\d{4})(\d{2})(\d{2})$/
-        if (compactYear.matches()) {
-            return validMonthDay(compactYear.group(2) as int, compactYear.group(3) as int)
-        }
-        def compactShort = cleaned =~ /^(\d{2})(\d{2})(\d{2})$/
-        if (compactShort.matches()) {
-            return validMonthDay(compactShort.group(2) as int, compactShort.group(3) as int)
+        if (comment?.rawText) {
+            def matcher = comment.rawText =~ /(?m)^@since(?:\s+.*)?$/
+            return matcher.find()
         }
         return false
     }
 
-    private static boolean validMonthDay(int month, int day) {
-        return month >= 1 && month <= 12 && day >= 1 && day <= 31
+    private static String extractSinceDate(CommentDoc comment) {
+        String sinceValue = extractSinceValue(comment)
+        if (sinceValue) {
+            return formatSinceDate(sinceValue)
+        }
+        String dateValue = extractDateValue(comment)
+        return formatSinceDate(dateValue)
+    }
+
+    private static String extractSinceValue(CommentDoc comment) {
+        if (comment.blockTags) {
+            for (BlockTag tag : comment.blockTags) {
+                if (tag.kind == BlockTagKind.SINCE) {
+                    if (tag instanceof SinceTag) {
+                        return ((SinceTag) tag).version ?: tag.rawText ?: ""
+                    }
+                    return tag.rawText ?: ""
+                }
+            }
+        }
+        if (comment.rawText) {
+            def matcher = comment.rawText =~ /(?m)^@since\s+(.+)$/
+            if (matcher.find()) {
+                return unescapeJavaUnicode(matcher.group(1)?.trim() ?: "")
+            }
+        }
+        return ""
+    }
+
+    private static String extractDateValue(CommentDoc comment) {
+        if (comment.blockTags) {
+            for (BlockTag tag : comment.blockTags) {
+                if (tag.kind == BlockTagKind.CUSTOM && tag.name == "date") {
+                    return tag.rawText ?: ""
+                }
+            }
+        }
+        if (comment.rawText) {
+            def matcher = comment.rawText =~ /(?m)^@date\s+(.+)$/
+            if (matcher.find()) {
+                return unescapeJavaUnicode(matcher.group(1)?.trim() ?: "")
+            }
+        }
+        return ""
+    }
+
+    /**
+     * 从 rawText 中提取最后一个 @author/@since/@date 标签之后出现的正文内容。
+     * JDK DocCommentTree API 中，bodyNodes 只包含 block tags 之前的正文，
+     * blockTags 存储了 @author/@since 等标签但不含后续正文段落，
+     * 因此需要从 rawText 中提取 @author/@since 之后的正文。
+     */
+    private static String extractPostAttributionText(CommentDoc comment) {
+        if (!comment.rawText) return ""
+        String raw = comment.rawText
+        // 找到最后一个 @author/@since/@date 标签的行
+        def matcher = raw =~ /(?m)^@(?:author|since|date)\s+.+$/
+        if (!matcher) return ""
+        // 获取最后一个匹配的结束位置
+        int lastMatchEnd = -1
+        while (matcher.find()) {
+            lastMatchEnd = matcher.end()
+        }
+        if (lastMatchEnd < 0) return ""
+        // 取最后一个 @author/@since/@date 行之后的所有内容
+        String afterAttribution = raw.substring(lastMatchEnd)
+        // 按段落分割（空行分隔），遇到其他 block tags 后停止收集
+        List<String> paragraphs = []
+        StringBuilder currentPara = new StringBuilder()
+        for (String line : afterAttribution.readLines()) {
+            String trimmed = line.trim()
+            // 跳过空行（段落分隔符）
+            if (trimmed.isEmpty()) {
+                if (currentPara.length() > 0) {
+                    paragraphs.add(currentPara.toString().trim())
+                    currentPara = new StringBuilder()
+                }
+                continue
+            }
+            // 后续 block tags 不属于署名说明，停止收集，避免吞掉参数/返回值文档
+            if (trimmed.matches(/^@\w+\b.*/)) {
+                if (currentPara.length() > 0) {
+                    paragraphs.add(currentPara.toString().trim())
+                    currentPara = new StringBuilder()
+                }
+                break
+            }
+            // 跳过 /** 和 */ 等注释标记
+            if (trimmed.matches(/^[\/\*]+\s*$/) || trimmed.matches(/^\*\s*[\/]/)) {
+                continue
+            }
+            // 移除行首的 * 和空格
+            String content = line.replaceAll(/^\s*\*\s?/, "")
+            if (content.trim()) {
+                currentPara << content.trim()
+                if (!content.trim().endsWith('.')) {
+                    currentPara << " "
+                }
+            }
+        }
+        if (currentPara.length() > 0) {
+            paragraphs.add(currentPara.toString().trim())
+        }
+        return unescapeJavaUnicode(paragraphs.findAll { it && !it.isEmpty() }.join("\n"))
+    }
+
+    /**
+     * 将 JDK DocCommentTree.toString() 输出的 \\uXXXX Unicode 转义还原为原始字符。
+     * JDK 对非 ASCII 字符（如中文）会输出 \\u6ce8 而非 "注"，此方法还原为可读文本。
+     */
+    private static String unescapeJavaUnicode(String text) {
+        if (!text) return ""
+        return text.replaceAll(/\\u([0-9a-fA-F]{4})/, { match ->
+            Character.toString((char) Integer.parseInt(match[1], 16))
+        })
     }
 
     private static String formatSinceDate(String version) {
@@ -303,25 +340,7 @@ class HtmlCommentRenderer {
             }
         } catch (Exception ignored) {
         }
-        return cleaned
-    }
-
-    private static String normalizeMultiline(String text) {
-        return (text ?: "")
-                .replace("\r\n", "\n")
-                .replace("\r", "\n")
-                .trim()
-    }
-
-    private static String normalizeInline(String text) {
-        return (text ?: "")
-                .replaceAll(/\s+/, " ")
-                .trim()
-    }
-
-    private static class AttributionSince {
-        String date = ""
-        String note = ""
+        return cleaned.split(/\s+/)[0]
     }
 
     String renderNodes(List<CommentNode> nodes, String fromPage, DocProjection projection) {

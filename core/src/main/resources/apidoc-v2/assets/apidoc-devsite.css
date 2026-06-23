@@ -9,9 +9,9 @@
   --ad-muted-2: #80868b;
   --ad-border: #dadce0;
   --ad-border-strong: #c4c7c5;
-  --ad-primary: #1a73e8;
+  --ad-primary: #135cd1;
   --ad-primary-hover: #185abc;
-  --ad-link: #1a73e8;
+  --ad-link: #135cd1;
   --ad-link-hover: #0b8043;
   --ad-link-hover-soft: #ecf7ee;
   --ad-platform-badge-bg: #f1f5f9;
@@ -111,9 +111,7 @@ a:focus {
 }
 
 a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible {
+button:focus-visible  {
   outline: 2px solid var(--ad-primary);
   outline-offset: 2px;
 }
@@ -192,9 +190,12 @@ select:focus-visible {
   background: var(--ad-surface);
 }
 
-.ad-search:focus {
-  border-color: var(--ad-primary);
-  background: var(--ad-surface);
+.ad-search:focus,
+.ad-search:focus-visible {
+  outline: none;
+  border-color: var(--ad-border);
+  background: var(--ad-surface-alt);
+  box-shadow: none;
 }
 
 .ad-search-results {
@@ -311,10 +312,17 @@ select:focus-visible {
   font: 13px/1 var(--ad-font-sans);
 }
 
-.ad-platform-selector-select:hover,
-.ad-platform-selector-select:focus {
+.ad-platform-selector-select:hover {
   border-color: var(--ad-border-strong);
   background: #fff;
+}
+
+.ad-platform-selector-select:focus,
+.ad-platform-selector-select:focus-visible {
+  outline: none;
+  border-color: var(--ad-border);
+  background: var(--ad-surface);
+  box-shadow: none;
 }
 
 .ad-book-link,
@@ -328,9 +336,12 @@ select:focus-visible {
   overflow-wrap: break-word;
 }
 
-.ad-book-link,
-.ad-book-package {
+.ad-book-link {
   padding: 7px 10px;
+}
+
+.ad-book-package {
+  padding: 7px 8px 9px 30px;
 }
 
 .ad-book-type,
@@ -473,8 +484,9 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
   margin-left: auto;
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .ad-platform-badge[data-tooltip]::after {
@@ -576,11 +588,7 @@ a.is-platform-disabled {
   width: 20px;
   height: 20px;
   transform: rotate(180deg);
-  transition: transform .15s ease, filter .15s ease;
-}
-.ad-book-nav-toggle:hover .ad-book-nav-toggle-icon,
-.ad-book-nav-toggle:focus-visible .ad-book-nav-toggle-icon {
-  filter: brightness(0) invert(1);
+  transition: transform .15s ease;
 }
 
 @media (min-width: 761px) {
@@ -625,7 +633,7 @@ a.is-platform-disabled {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  margin: var(--ad-card-margin) 0;
+  margin: 12px 0 var(--ad-card-margin);
 }
 
 .ad-devsite-content-inner {
@@ -690,13 +698,9 @@ a.is-platform-disabled {
   transition: transform .15s ease;
 }
 
-.ad-toc-jump-toggle[data-state="top"] .ad-toc-jump-icon {
-  transform: rotate(180deg);
-}
-
 .ad-toc-title {
   position: sticky;
-  top: 0;
+  top: 12px;
   z-index: 1;
   margin: 0 0 10px;
   padding: 12px 0 12px;
@@ -747,7 +751,7 @@ a.is-platform-disabled {
   line-height: 1.2;
   overflow-wrap: break-word;
   border-bottom: 1px solid var(--ad-border);
-  padding-bottom: 12px;
+  padding-bottom: 0;
 }
 
 .ad-api-index ul {
@@ -920,7 +924,7 @@ code {
 
 .ad-member-details .ad-section-heading {
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .ad-member-details + .ad-member-details {
@@ -939,7 +943,7 @@ code {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 10px;
+  margin: 0;
   color: var(--ad-text-strong);
   font-size: 17px;
   font-weight: 500;
@@ -1305,7 +1309,7 @@ code {
 .ad-book-package {
   position: relative;
   display: block;
-  padding: 9px 8px 9px 30px;
+  padding: 7px 8px 9px 30px;
   cursor: pointer;
   list-style: none;
   line-height: 1.3;
@@ -1894,12 +1898,11 @@ code {
 }
 
 .ad-detail-description {
-  max-width: 860px;
-  margin-bottom: 24px;
+  margin-bottom: 4px;
 }
 
 .ad-detail-description p {
-  margin: 0 0 16px;
+  margin: 0 0 4px;
   color: #1f2937;
   line-height: 1.75;
   overflow-wrap: break-word;
@@ -1970,25 +1973,25 @@ code {
   padding: 0;
 }
 
-.ad-detail-description .ad-attribution {
+.ad-attribution {
   margin: 4px 0 16px;
-  padding: 0 0 0 14px;
+  padding: 8px 16px;
   border-left: 4px solid var(--ad-border-strong);
-  background: transparent;
+  background: #f8f8f8;
   color: var(--ad-muted);
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: break-word;
 }
 
-.ad-detail-description .ad-attribution p {
+.ad-attribution p {
   margin: 0;
   color: inherit;
   font-size: inherit;
   line-height: inherit;
 }
 
-.ad-detail-description .ad-attribution p + p {
+.ad-attribution p + p {
   margin-top: 4px;
 }
 
@@ -1998,6 +2001,14 @@ code {
 
 .ad-detail-section code {
   font-size: 16px;
+}
+
+.ad-detail-section .ad-sub-section-heading {
+  margin: 0;
+}
+
+.ad-detail-section .ad-member-section-title {
+  margin: 0;
 }
 
 .ad-member-signature .ad-signature-card {
@@ -2110,6 +2121,7 @@ code {
 .ad-member-detail h3 {
   font-size: 18px;
   font-weight: 650;
+  margin: 0;
 }
 
 .ad-devsite-toc a:hover,

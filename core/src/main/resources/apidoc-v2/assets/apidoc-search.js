@@ -300,6 +300,11 @@
     .catch(function () { items = []; });
 
   input.addEventListener("input", function () { render(input.value); });
+  input.addEventListener("focus", function () {
+      if (normalizedQuery()) {
+         render(input.value);
+      }
+    });
   window.addEventListener("apidoc-platform-change", function () { render(normalizedQuery()); });
   function onSearchKeydown(event) {
     if (!panel.classList.contains("open") || !lastHits.length) return;

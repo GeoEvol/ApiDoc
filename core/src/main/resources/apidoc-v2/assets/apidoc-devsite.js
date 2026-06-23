@@ -481,28 +481,9 @@
       return item.target;
     });
     var tocTicking = false;
-    function applyTocJumpState(active) {
-      if (!tocJumpToggle) return;
-      var scrollable = maxScrollTop();
-      if (!tocTargets.length || scrollable <= 0) {
-        tocJumpToggle.hidden = true;
-        return;
-      }
-      var last = tocTargets[tocTargets.length - 1];
-      var atLastSection = active === last || currentScrollTop() >= scrollable - 2;
-      var state = atLastSection ? "top" : "bottom";
-      var label = atLastSection ? "Back to top" : "Scroll to bottom";
-      tocJumpToggle.hidden = false;
-      tocJumpToggle.setAttribute("data-state", state);
-      tocJumpToggle.setAttribute("aria-label", label);
-      tocJumpToggle.setAttribute("data-title", label);
-    }
     function setActiveToc() {
       tocTicking = false;
-      if (!tocTargets.length) {
-        applyTocJumpState(null);
-        return;
-      }
+      if (!tocTargets.length) return;
       var active = tocTargets[0];
       var anchorLine = Math.max(90, Math.floor(window.innerHeight * 0.22));
       tocTargets.forEach(function (item) {
@@ -513,7 +494,6 @@
       if (active.link.scrollIntoView) {
         active.link.scrollIntoView({ block: "nearest" });
       }
-      applyTocJumpState(active);
     }
     function requestTocSync() {
       if (tocTicking) return;
@@ -523,10 +503,24 @@
     window.addEventListener("scroll", requestTocSync, { passive: true });
     window.addEventListener("resize", requestTocSync);
     if (tocJumpToggle) {
+      var lastScrollTop = window.scrollY;
+      window.addEventListener("scroll", function () {
+        if (!tocJumpToggle) return;
+        var scrollY = window.scrollY;
+        var scrollable = maxScrollTop();
+        if (scrollable <= 0 || scrollY <= 0) {
+          tocJumpToggle.hidden = true;
+        } else if (scrollY < lastScrollTop) {
+          tocJumpToggle.hidden = false;
+        } else {
+          tocJumpToggle.hidden = true;
+        }
+        lastScrollTop = scrollY;
+      }, { passive: true });
       tocJumpToggle.addEventListener("click", function () {
-        var state = tocJumpToggle.getAttribute("data-state");
-        window.scrollTo({ top: state === "top" ? 0 : maxScrollTop(), behavior: "smooth" });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
+      tocJumpToggle.hidden = true;
     }
     setActiveToc();
   } else if (tocJumpToggle) {
