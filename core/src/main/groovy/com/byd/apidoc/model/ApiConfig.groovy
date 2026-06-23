@@ -40,6 +40,26 @@ class ApiConfig {
     boolean externalLinksEnabled = false
 
     /**
+     * HTML 静态站点的部署根路径，例如 /api-docs-html/。
+     *
+     * 仅在 stableAssetLinks=true 时参与 CSS/JS/search-index 路径生成。
+     * 默认留空，保持原有相对路径输出，兼容本地离线浏览。
+     */
+    String siteBasePath = ""
+
+    /**
+     * HTML 静态资源版本号。非空时输出 apidoc-${assetVersion}.css、
+     * apidoc-${assetVersion}.js、search-${assetVersion}.js。
+     */
+    String assetVersion = ""
+
+    /**
+     * 是否对 CSS/JS/search-index 使用稳定站点根路径。
+     * false 时继续使用原有 ${prefix}assets/... 相对路径。
+     */
+    boolean stableAssetLinks = false
+
+    /**
      * Optional Java source version for javadoc parsing. When empty, the parser
      * uses the current runtime JDK major version.
      */
