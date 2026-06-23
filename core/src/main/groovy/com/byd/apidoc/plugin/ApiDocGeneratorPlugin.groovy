@@ -40,6 +40,9 @@ class ApiDocGeneratorPlugin implements Plugin<Project> {
             task.includeRemoved = extension.includeRemoved
             task.externalLinksEnabled = extension.externalLinksEnabled
             task.sourceVersion = extension.sourceVersion
+            task.siteBasePath.set(extension.siteBasePath)
+            task.assetVersion.set(extension.assetVersion)
+            task.stableAssetLinks.set(extension.stableAssetLinks)
             task.dependencyClasspath.from(extension.dependencyClasspath)
 
             task.groupByTag = extension.groupByTag
@@ -84,6 +87,9 @@ class ApiDocGeneratorPlugin implements Plugin<Project> {
             task.includeRemoved = extension.includeRemoved
             task.externalLinksEnabled = extension.externalLinksEnabled
             task.sourceVersion = extension.sourceVersion
+            task.siteBasePath.set(extension.siteBasePath)
+            task.assetVersion.set(extension.assetVersion)
+            task.stableAssetLinks.set(extension.stableAssetLinks)
             task.dependencyClasspath.from(extension.dependencyClasspath)
 
             task.groupByTag = extension.groupByTag
