@@ -8,5 +8,7 @@ class RenderContext {
     DocProjection projection
     File outputDir
     String projectName = "API Reference"
+    String siteBasePath = ""
     String assetVersion = ""
+    boolean stableAssetLinks = false
 }
