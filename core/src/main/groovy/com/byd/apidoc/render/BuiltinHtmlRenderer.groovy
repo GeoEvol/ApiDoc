@@ -9,7 +9,9 @@ class BuiltinHtmlRenderer {
     private final HtmlSiteRenderer siteRenderer = new HtmlSiteRenderer()
 
     void render(RenderContext context) {
-        context.assetVersion = readAssetVersion()
+        if (!context.assetVersion) {
+            context.assetVersion = readAssetVersion()
+        }
         siteRenderer.render(context)
     }
 
