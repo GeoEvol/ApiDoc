@@ -3,9 +3,11 @@
   var panel = document.getElementById("ad-search-results");
   if (!input || !panel) return;
 
-  var src = document.currentScript && document.currentScript.src || location.href;
-  var rootPrefix = document.currentScript && document.currentScript.getAttribute('data-root-prefix') || "";
-  var url = new URL("../search-index.json", src);
+  var script = document.currentScript;
+  var src = script && script.src || location.href;
+  var rootPrefix = script && script.getAttribute("data-root-prefix") || "";
+  var searchIndex = script && script.getAttribute("data-search-index") || "";
+  var url = searchIndex ? new URL(searchIndex, location.href) : new URL("../search-index.json", src);
   var items = [];
   var activeIndex = -1;
   var lastHits = [];
