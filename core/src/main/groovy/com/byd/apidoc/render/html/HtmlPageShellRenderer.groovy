@@ -9,13 +9,16 @@ class HtmlPageShellRenderer {
         String v = context.assetVersion ?: ""
         String cssFile = v ? "apidoc-${v}.css" : "apidoc.css"
         String jsFile  = v ? "apidoc-${v}.js"  : "apidoc.js"
+        String searchFile = v ? "search-${v}.js" : "search.js"
+        String assetBase = assetPrefix(context, prefix)
+        String searchIndex = searchIndexUrl(context, prefix)
         return """<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escape(title)} - ${escape(context.projectName ?: 'API Reference')}</title>
-  <link rel="stylesheet" href="${prefix}assets/${cssFile}">
+  <link rel="stylesheet" href="${assetBase}assets/${cssFile}">
 </head>
 <body>
   <!--
@@ -42,11 +45,33 @@ ${body}
     </main>
     ${tocHtml ?: '<nav class="ad-devsite-toc" aria-label="On this page"></nav>'}
   </div>
-  <script src="${prefix}assets/${v ? "search-${v}.js" : "search.js"}" data-root-prefix="${escapeAttr(prefix)}"></script>
-  <script src="${prefix}assets/${jsFile}"></script>
+  <script src="${assetBase}assets/${searchFile}" data-root-prefix="${escapeAttr(prefix)}" data-search-index="${escapeAttr(searchIndex)}"></script>
+  <script src="${assetBase}assets/${jsFile}"></script>
 </body>
 </html>
 """
+    }
+
+    private static String assetPrefix(RenderContext context, String prefix) {
+        if (context?.stableAssetLinks && context?.siteBasePath?.trim()) {
+            return normalizeBasePath(context.siteBasePath)
+        }
+        return prefix ?: ""
+    }
+
+    private static String searchIndexUrl(RenderContext context, String prefix) {
+        if (context?.stableAssetLinks && context?.siteBasePath?.trim()) {
+            return "${normalizeBasePath(context.siteBasePath)}search-index.json"
+        }
+        return "${prefix ?: ""}search-index.json"
+    }
+
+    private static String normalizeBasePath(String value) {
+        String base = (value ?: "").trim()
+        if (!base) return ""
+        if (!base.startsWith("/")) base = "/" + base
+        if (!base.endsWith("/")) base += "/"
+        return base
     }
 
     private static String bookNav(RenderContext context, String prefix, String currentUrl) {
