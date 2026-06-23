@@ -47,7 +47,10 @@ class RenderPipelineCoordinator {
                 corpus: docCorpus,
                 projection: projection,
                 outputDir: outputDir,
-                projectName: projectName ?: config?.projectName ?: "API Reference"
+                projectName: projectName ?: config?.projectName ?: "API Reference",
+                siteBasePath: config?.siteBasePath ?: "",
+                assetVersion: config?.assetVersion ?: "",
+                stableAssetLinks: config?.stableAssetLinks ?: false
         )
         String outputFormat = config?.outputFormat ?: ApiConfig.FORMAT_MARKDOWN
         if (ApiConfig.FORMAT_MARKDOWN.equalsIgnoreCase(outputFormat)) {
