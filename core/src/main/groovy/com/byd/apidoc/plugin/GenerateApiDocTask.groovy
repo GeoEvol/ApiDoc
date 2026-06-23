@@ -77,6 +77,14 @@ abstract class GenerateApiDocTask extends DefaultTask {
     @Input
     @Optional
     abstract Property<String> getSourceVersion()
+    @Input
+    @Optional
+    abstract Property<String> getSiteBasePath()
+    @Input
+    @Optional
+    abstract Property<String> getAssetVersion()
+    @Input
+    abstract Property<Boolean> getStableAssetLinks()
     @Classpath
     abstract ConfigurableFileCollection getDependencyClasspath()
     @Input
@@ -159,6 +167,9 @@ abstract class GenerateApiDocTask extends DefaultTask {
         config.includeRemoved = includeRemoved.get()
         config.externalLinksEnabled = externalLinksEnabled.get()
         config.sourceVersion = sourceVersion.orNull ?: ""
+        config.siteBasePath = siteBasePath.orNull ?: ""
+        config.assetVersion = assetVersion.orNull ?: ""
+        config.stableAssetLinks = stableAssetLinks.getOrElse(false)
         config.dependencyClasspath = dependencyClasspath.files.collect { it.absolutePath }
         return config
     }
