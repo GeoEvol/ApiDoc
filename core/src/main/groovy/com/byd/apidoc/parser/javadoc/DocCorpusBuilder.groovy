@@ -1,4 +1,4 @@
-package com.byd.apidoc.parser.javadoc.v1
+package com.byd.apidoc.parser.javadoc
 
 import com.byd.apidoc.comment.BlockTag
 import com.byd.apidoc.comment.BlockTagKind
@@ -47,7 +47,6 @@ import com.sun.source.doctree.InheritDocTree
 import com.sun.source.doctree.LinkTree
 import com.sun.source.doctree.LiteralTree
 import com.sun.source.doctree.ParamTree
-import com.sun.source.doctree.ReferenceTree
 import com.sun.source.doctree.ReturnTree
 import com.sun.source.doctree.SeeTree
 import com.sun.source.doctree.SinceTree
@@ -89,6 +88,9 @@ class DocCorpusBuilder {
         types.each { TypeElement typeElement ->
             PackageElement packageElement = context.elements.getPackageOf(typeElement)
             String packageName = packageElement?.qualifiedName?.toString() ?: ""
+            if (context.config?.isClassExcluded(typeElement.qualifiedName.toString(), packageName)) {
+                return
+            }
             DocPackage docPackage = packages.computeIfAbsent(packageName) {
                 DocId packageId = packageId(packageName)
                 new DocPackage(

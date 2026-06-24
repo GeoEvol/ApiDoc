@@ -407,7 +407,6 @@ button:focus-visible  {
 .ad-book-overview.is-current:focus {
   background: var(--ad-primary-soft);
   color: var(--ad-primary);
-  font-weight: 600;
 }
 
 .ad-book-section {
@@ -1401,9 +1400,13 @@ code {
   padding-left: 42px;
 }
 
-.ad-book-group.ad-nav-item, .ad-book-overview.ad-nav-item {
+.ad-book-group.ad-nav-item {
   margin: 0;
   font-weight: 400;
+}
+
+.ad-book-overview.ad-nav-item {
+  margin: 0;
 }
 
 .ad-index-row {
@@ -2108,7 +2111,7 @@ code {
 
 .ad-signature-card {
   border-radius: 7px;
-  margin: 16px 0 20px;
+  margin: 8px 0 8px;
   font-size: 16px;
   line-height: 1.7;
 }

@@ -2,7 +2,7 @@ package com.byd.apidoc.doclet
 
 import com.byd.apidoc.model.ApiConfig
 import com.byd.apidoc.model.ApiDoc
-import com.byd.apidoc.parser.javadoc.v1.DocCorpusBuilder
+import com.byd.apidoc.parser.javadoc.DocCorpusBuilder
 import com.byd.apidoc.parser.javadoc.converter.ElementClassConverter
 import jdk.javadoc.doclet.Doclet
 import jdk.javadoc.doclet.DocletEnvironment

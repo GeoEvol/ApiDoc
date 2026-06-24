@@ -85,7 +85,7 @@ class HtmlCommentRenderer {
         if (seeTags) {
             out << "<p><strong>See also:</strong> ${seeTags.collect { renderNodes(it.body, fromPage, projection) ?: escape(it.rawText) }.findAll { it }.join(', ')}</p>\n"
         }
-        List<BlockTag> custom = comment.blockTags.findAll { it.kind == BlockTagKind.CUSTOM && !(it.name in ["hide", "removed", "apiSince", "deprecatedSince", "removedSince", "author", "date"]) }
+        List<BlockTag> custom = comment.blockTags.findAll { it.kind == BlockTagKind.CUSTOM && !(it.name in ["hide", "removed", "apiSince", "deprecatedSince", "removedSince", "author", "date", "apiNote"]) }
         custom.each { BlockTag tag ->
             out << "<p><strong>@${escape(tag.name)}:</strong> ${renderNodes(tag.body, fromPage, projection) ?: escape(tag.rawText)}</p>\n"
         }
@@ -142,6 +142,7 @@ class HtmlCommentRenderer {
         String authorName = extractAuthorName(comment)
         boolean hasSince = hasSinceTag(comment)
         String sinceDate = extractSinceDate(comment)
+        String apiNoteText = extractApiNoteText(comment)
         // 方法注释：只有当方法与类注释的 author/since 不同时才显示
         if (parentComment != null) {
             String parentAuthor = extractAuthorName(parentComment)
@@ -164,16 +165,40 @@ class HtmlCommentRenderer {
         List<String> parts = []
         if (authorName) parts.add(authorName)
         if (sinceDate) parts.add(sinceDate)
-        // 提取 @author/@since/@date 之后出现的正文内容
-        String postText = extractPostAttributionText(comment)
         String attributionText = "Add by ${parts.join(' | ')}"
         StringBuilder block = new StringBuilder("<blockquote class=\"ad-attribution\">")
         block << "<p>${escape(attributionText)}</p>"
-        if (postText) {
-            block << "<p>${escape(postText)}</p>"
+        if (apiNoteText) {
+            block << "<p>${apiNoteText}</p>"
         }
         block << "</blockquote>"
         return block.toString()
+    }
+
+    private String extractApiNoteText(CommentDoc comment) {
+        if (!comment.blockTags) return ""
+        BlockTag apiNoteTag = comment.blockTags.find { it.kind == BlockTagKind.CUSTOM && it.name == "apiNote" }
+        if (apiNoteTag) {
+            String rendered = renderNodes(apiNoteTag.body, "", null)
+            if (rendered) {
+                // 剥离可能的 @apiNote 前缀（body 渲染结果可能包含标签名）
+                return rendered.replaceAll(/^@apiNote\s+/, "")
+            }
+            String raw = apiNoteTag.rawText?.trim() ?: ""
+            if (raw) {
+                // rawText 通常包含 "@apiNote xxx"，需要去除前缀
+                return escape(raw.replaceAll(/^@apiNote\s+/, ""))
+            }
+            return ""
+        }
+        // 回退：从 rawText 中解析 @apiNote（正则已只取正文）
+        if (comment.rawText) {
+            def matcher = comment.rawText =~ /(?m)^@apiNote\s+(.+)$/
+            if (matcher) {
+                return escape(unescapeJavaUnicode(matcher[0][1]?.trim() ?: ""))
+            }
+        }
+        return ""
     }
 
     private static String extractAuthorName(CommentDoc comment) {
@@ -253,7 +278,6 @@ class HtmlCommentRenderer {
         }
         return ""
     }
-
     /**
      * 从 rawText 中提取最后一个 @author/@since/@date 标签之后出现的正文内容。
      * JDK DocCommentTree API 中，bodyNodes 只包含 block tags 之前的正文，
