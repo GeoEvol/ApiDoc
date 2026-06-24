@@ -44,6 +44,7 @@ ${body}
       <footer class="ad-page-footer">Powered by DiCore Team.${timestamp ? " | Last updated ${timestamp}." : ""}</footer>
     </main>
     ${tocHtml ?: '<nav class="ad-devsite-toc" aria-label="On this page"></nav>'}
+    ${contactWidget()}
   </div>
   <script src="${assetBase}assets/${searchFile}" data-root-prefix="${escapeAttr(prefix)}" data-search-index="${escapeAttr(searchIndex)}"></script>
   <script src="${assetBase}assets/${jsFile}"></script>
@@ -126,6 +127,34 @@ ${body}
           <input class="ad-search" id="ad-search" type="search" placeholder="Search API" autocomplete="off">
           <div class="ad-search-results" id="ad-search-results"></div>
         </div>"""
+    }
+
+    private static String contactWidget() {
+        return """    <div class="ad-contact-widget">
+      <button class="ad-contact-toggle" type="button" aria-controls="ad-contact-popover" aria-expanded="false" aria-label="Contact us" data-title="Contact us">
+        <svg class="ad-contact-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+          <path d="M5.25 14.25 3 16.5V5.75A2.25 2.25 0 0 1 5.25 3.5h9.5A2.25 2.25 0 0 1 17 5.75v6.25a2.25 2.25 0 0 1-2.25 2.25h-9.5Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6.75 7.25h6.5M6.75 10h4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <section class="ad-contact-popover" id="ad-contact-popover" role="dialog" aria-modal="false" aria-labelledby="ad-contact-title" tabindex="-1" hidden>
+        <div class="ad-contact-header">
+          <h2 id="ad-contact-title">Contact us</h2>
+          <button class="ad-contact-close" type="button" aria-label="Close contact panel">&times;</button>
+        </div>
+        <p class="ad-contact-lead">Need help with this API reference?</p>
+        <p>Contact the SDK documentation owner or DiCore Team.</p>
+        <div class="ad-contact-note">
+          <strong>When contacting us, please include:</strong>
+          <ul>
+            <li>API name or page title</li>
+            <li>Current page URL</li>
+            <li>Platform and SDK version</li>
+            <li>Problem description or feedback</li>
+          </ul>
+        </div>
+      </section>
+    </div>"""
     }
 
     private static boolean isOnDescendantUrl(NavNode pkg, String currentUrl) {
