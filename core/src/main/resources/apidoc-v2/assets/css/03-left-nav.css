@@ -1,0 +1,13 @@
+
+.ad-devsite-book-nav {
+  position: sticky;
+  top: 0;
+  width: var(--ad-left-nav-expanded-width);
+  height: 100vh;
+  overflow: auto;
+  margin-right: 12px;
+  padding: 18px 14px 28px;
+  border-right: 0;
+  background: var(--ad-surface);
+  transition: transform .2s cubic-bezier(.4, 0, .2, 1);
+}

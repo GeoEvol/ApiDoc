@@ -1,0 +1,63 @@
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ad-canvas);
+  color: var(--ad-text);
+  scrollbar-color: var(--ad-scrollbar-thumb) var(--ad-scrollbar-track);
+  scrollbar-width: thin;
+}
+
+body {
+  margin: 0;
+  background: var(--ad-canvas);
+  color: var(--ad-text);
+  font: 14px/1.58 var(--ad-font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  scrollbar-color: var(--ad-scrollbar-thumb) var(--ad-scrollbar-track);
+  scrollbar-width: thin;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: var(--ad-scrollbar-track);
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  border: 2px solid var(--ad-scrollbar-track);
+  border-radius: 999px;
+  background-color: var(--ad-scrollbar-thumb);
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ad-scrollbar-thumb-hover);
+}
+
+a {
+  color: var(--ad-link);
+  text-decoration: none;
+}
+
+a:hover,
+a:focus {
+  color: var(--ad-primary);
+  text-decoration: underline;
+}
+
+a:focus-visible,
+button:focus-visible  {
+  outline: 2px solid var(--ad-primary);
+  outline-offset: 2px;
+}

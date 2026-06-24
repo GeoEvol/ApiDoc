@@ -1,0 +1,66 @@
+
+.ad-member-summary,
+.ad-member-detail,
+.ad-inherited-members {
+  margin-top: 0;
+  margin-bottom: 30px;
+}
+
+.ad-member-summary h2,
+.ad-member-details h2,
+.ad-inherited-members h2 {
+  margin: 0 0 12px;
+  padding-top: 10px;
+  color: var(--ad-text-strong);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.ad-member-summary table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid var(--ad-border);
+  table-layout: fixed;
+}
+
+.ad-member-summary td {
+  min-width: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ad-border);
+  vertical-align: top;
+}
+
+.ad-member-summary td:first-child {
+  width: 38%;
+  color: var(--ad-text-strong);
+  font-family: var(--ad-font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.ad-member-summary td:last-child {
+  color: var(--ad-muted);
+}
+
+.ad-member-summary tr:hover td {
+  background: var(--ad-surface-alt);
+}
+
+.ad-member-details {
+  margin-top: 34px;
+}
+
+.ad-member-details .ad-section-heading {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.ad-member-details + .ad-member-details {
+  margin-top: 40px;
+}
+
+.ad-member-summary tr.ad-summary-constant td:first-child {
+  color: var(--ad-primary);
+}
