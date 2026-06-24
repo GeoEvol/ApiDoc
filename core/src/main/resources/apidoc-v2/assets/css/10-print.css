@@ -1,0 +1,32 @@
+
+@media print {
+  .ad-devsite-topbar,
+  .ad-devsite-book-nav,
+  .ad-book-nav-toggle,
+  .ad-devsite-toc,
+  .ad-copy-anchor {
+    display: none !important;
+  }
+
+  .ad-devsite-shell {
+    display: block;
+    height: auto;
+    background: var(--ad-surface);
+    column-gap: 0;
+  }
+
+  body {
+    overflow: visible;
+  }
+
+  .ad-devsite-content {
+    width: 100%;
+    margin: 0;
+  }
+  .ad-devsite-content-inner {
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+  }
+}

@@ -1,0 +1,135 @@
+
+.ad-api-index,
+.ad-api-article {
+  min-width: 0;
+}
+
+.ad-api-index h1,
+.ad-api-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--ad-text-strong);
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+  border-bottom: 1px solid var(--ad-border);
+  padding-bottom: 0;
+}
+
+.ad-api-index ul {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ad-border);
+}
+
+.ad-api-index li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ad-border);
+  overflow-wrap: break-word;
+}
+
+.ad-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 0 0 20px;
+  color: var(--ad-muted);
+  font-size: 14px;
+  align-items: center;
+}
+
+.ad-breadcrumb-separator {
+  color: var(--ad-muted-2);
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.ad-api-package,
+.ad-package {
+  margin: 0;
+  color: var(--ad-muted);
+  font-size: 13px;
+  overflow-wrap: break-word;
+}
+
+.ad-api-header {
+  padding-bottom: 0;
+}
+
+.ad-api-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 14px;
+}
+
+.ad-api-status-inline {
+  margin: 6px 0 0;
+}
+
+.ad-api-status .ad-status-chip,
+.ad-api-status span {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--ad-info-bg);
+  color: var(--ad-info-text);
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.ad-status-removed {
+  border-color: #f5c2be !important;
+  background: var(--ad-removed-bg) !important;
+  color: var(--ad-removed-text) !important;
+}
+
+.ad-status-hidden,
+.ad-status-pending,
+.ad-status-nullability,
+.ad-status-range {
+  border-color: var(--ad-border) !important;
+  background: var(--ad-neutral-bg) !important;
+  color: var(--ad-neutral-text) !important;
+}
+
+.ad-status-permission {
+  border-color: #b7dfc2 !important;
+  background: var(--ad-permission-bg) !important;
+  color: var(--ad-permission-text) !important;
+}
+
+pre {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--ad-border);
+  border-radius: var(--ad-radius-md);
+  background: var(--ad-code-bg);
+  color: var(--ad-code-text);
+  padding: 13px 14px;
+}
+
+code {
+  font-family: var(--ad-font-mono);
+  font-size: 13px;
+}
+
+.ad-api-declaration {
+  margin: 16px 0 0;
+}
+
+.ad-api-article p {
+  max-width: 78ch;
+}
