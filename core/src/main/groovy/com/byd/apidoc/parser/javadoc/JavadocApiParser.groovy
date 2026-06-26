@@ -7,6 +7,7 @@ import com.byd.apidoc.doclet.DocletConfig
 import com.byd.apidoc.model.ApiConfig
 import com.byd.apidoc.model.ApiDoc
 import com.byd.apidoc.model.DocCorpus
+import com.byd.apidoc.parser.javadoc.stub.JavadocStubGenerator
 
 import javax.tools.DiagnosticCollector
 import javax.tools.DocumentationTool
@@ -39,6 +40,8 @@ class JavadocApiParser {
             return new BuildContext(config: config, docCorpus: new DocCorpus())
         }
 
+        List<String> resolveSourcePaths = resolveSourcePaths(sourcePaths, config)
+
         DocumentationTool tool = ToolProvider.systemDocumentationTool
         if (tool == null) {
             throw new IllegalStateException("JDK DocumentationTool is unavailable. Run ApiDoc with a JDK, not a JRE.")
@@ -51,7 +54,7 @@ class JavadocApiParser {
         try {
             fileManager = tool.getStandardFileManager(diagnostics, Locale.getDefault(), Charset.forName("UTF-8"))
             Iterable<? extends JavaFileObject> units = fileManager.getJavaFileObjectsFromFiles(sourceFiles)
-            List<String> options = buildOptions(sourcePaths, context.id, config)
+            List<String> options = buildOptions(resolveSourcePaths, context.id, config)
 
             DocumentationTool.DocumentationTask task = tool.getTask(
                     new StringWriter(),
@@ -79,6 +82,15 @@ class JavadocApiParser {
             BuildContextRegistry.remove(context.id)
             fileManager?.close()
         }
+    }
+
+    private static List<String> resolveSourcePaths(List<String> sourcePaths, ApiConfig config) {
+        List<String> paths = new ArrayList<>(sourcePaths?.findAll { it != null } ?: [])
+        if (config?.generatedStubsEnabled) {
+            File stubRoot = new JavadocStubGenerator().generate(config)
+            paths.add(stubRoot.absolutePath)
+        }
+        return paths
     }
 
     private static List<File> collectJavaFiles(List<String> sourcePaths) {
@@ -110,7 +122,7 @@ class JavadocApiParser {
         ]
         if (!sourceRoots.isEmpty()) {
             options.add("-sourcepath")
-            options.add(sourceRoots.join(File.pathSeparator))
+            options.add(sourceRoots.unique().join(File.pathSeparator))
         }
         List<String> classPaths = []
         classPaths.addAll(config?.dependencyClasspath?.findAll { it } ?: [])
