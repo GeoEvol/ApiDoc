@@ -19,6 +19,7 @@ abstract class ApiDocExtension {
     private static final String DEFAULT_SOURCE_PATH = "src/main/java"
     private static final String DEFAULT_MARKDOWN_OUTPUT_DIR = "build/api-docs"
     private static final String DEFAULT_HTML_OUTPUT_DIR = "build/api-docs-html"
+    private static final String DEFAULT_GENERATED_STUB_DIR = "build/apidoc/generated-stubs"
     private static final String EMPTY_STRING = ""
 
     // --- 支持单个源码路径 ---
@@ -54,6 +55,8 @@ abstract class ApiDocExtension {
     abstract Property<String> getAssetVersion()
     abstract Property<Boolean> getStableAssetLinks()
     abstract ConfigurableFileCollection getDependencyClasspath()
+    abstract Property<Boolean> getGeneratedStubsEnabled()
+    abstract Property<String> getGeneratedStubDir()
     abstract Property<Boolean> getGroupByTag()
     abstract ListProperty<String> getIncludeTags()
     abstract ListProperty<String> getExcludePackages()
@@ -83,6 +86,8 @@ abstract class ApiDocExtension {
         getSiteBasePath().convention(EMPTY_STRING)
         getAssetVersion().convention(EMPTY_STRING)
         getStableAssetLinks().convention(false)
+        getGeneratedStubsEnabled().convention(false)
+        getGeneratedStubDir().convention(DEFAULT_GENERATED_STUB_DIR)
         getProjectName().convention(EMPTY_STRING)
         getGroupByTag().convention(false)
         getIncludeTags().convention(objects.listProperty(String.class))
