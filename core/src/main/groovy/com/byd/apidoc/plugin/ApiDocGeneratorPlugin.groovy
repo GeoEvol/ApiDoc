@@ -44,6 +44,8 @@ class ApiDocGeneratorPlugin implements Plugin<Project> {
             task.assetVersion.set(extension.assetVersion)
             task.stableAssetLinks.set(extension.stableAssetLinks)
             task.dependencyClasspath.from(extension.dependencyClasspath)
+            task.generatedStubsEnabled.set(extension.generatedStubsEnabled)
+            task.generatedStubDir.set(extension.generatedStubDir)
 
             task.groupByTag = extension.groupByTag
             task.includeTags = extension.includeTags
@@ -91,6 +93,8 @@ class ApiDocGeneratorPlugin implements Plugin<Project> {
             task.assetVersion.set(extension.assetVersion)
             task.stableAssetLinks.set(extension.stableAssetLinks)
             task.dependencyClasspath.from(extension.dependencyClasspath)
+            task.generatedStubsEnabled.set(extension.generatedStubsEnabled)
+            task.generatedStubDir.set(extension.generatedStubDir)
 
             task.groupByTag = extension.groupByTag
             task.includeTags = extension.includeTags
