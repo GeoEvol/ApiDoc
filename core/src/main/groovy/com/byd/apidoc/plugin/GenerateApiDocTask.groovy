@@ -88,6 +88,11 @@ abstract class GenerateApiDocTask extends DefaultTask {
     @Classpath
     abstract ConfigurableFileCollection getDependencyClasspath()
     @Input
+    abstract Property<Boolean> getGeneratedStubsEnabled()
+    @Input
+    @Optional
+    abstract Property<String> getGeneratedStubDir()
+    @Input
     abstract Property<Boolean> getGroupByTag()
     @Input
     abstract ListProperty<String> getIncludeTags()
@@ -125,6 +130,9 @@ abstract class GenerateApiDocTask extends DefaultTask {
         }
         if (!config.excludePackages.isEmpty()) {
             logger.lifecycle("排除包: ${config.excludePackages}")
+        }
+        if (config.generatedStubsEnabled) {
+            logger.lifecycle("启用Javadoc解析Stub: ${config.generatedStubDir}")
         }
         logger.lifecycle("========================================")
 
@@ -171,6 +179,9 @@ abstract class GenerateApiDocTask extends DefaultTask {
         config.assetVersion = assetVersion.orNull ?: ""
         config.stableAssetLinks = stableAssetLinks.getOrElse(false)
         config.dependencyClasspath = dependencyClasspath.files.collect { it.absolutePath }
+        config.projectRootDir = project.rootProject.projectDir.absolutePath
+        config.generatedStubsEnabled = generatedStubsEnabled.getOrElse(false)
+        config.generatedStubDir = generatedStubDir.orNull ?: "build/apidoc/generated-stubs"
         return config
     }
 }
