@@ -71,6 +71,24 @@ class ApiConfig {
      */
     List<String> dependencyClasspath = []
 
+    /**
+     * Root directory of the Gradle root project. Used to resolve relative generated
+     * javadoc stub paths before invoking the JDK DocumentationTool.
+     */
+    String projectRootDir = ""
+
+    /**
+     * Whether ApiDoc should generate temporary javadoc stubs for known missing
+     * compile-time dependencies. Generated stubs are added to javadoc -sourcepath
+     * only and are not collected as documentation source files.
+     */
+    boolean generatedStubsEnabled = false
+
+    /**
+     * Directory where temporary javadoc stub sources are generated.
+     */
+    String generatedStubDir = "build/apidoc/generated-stubs"
+
     // 是否按@tag分组
     boolean groupByTag = false
 
